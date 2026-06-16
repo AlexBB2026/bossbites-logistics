@@ -227,7 +227,7 @@
     </div>
     <div class="api-key-wrap">
       <label>ANTHROPIC KEY</label>
-      <input type="password" id="apiKey" placeholder="sk-ant-..." value=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; />
+      <input type="password" id="apiKey" placeholder="sk-ant-..." value=; />
     </div>
   </div>
 
@@ -865,7 +865,7 @@ async function handleFile(file) {
   resultDiv.className = 'result';
   resultDiv.innerHTML = '';
 
-  const apiKey = apiKeyEl.value.trim() || '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';
+  const apiKey = apiKeyEl.value.trim() || '';
   if (!apiKey) {
     showError('Enter your Anthropic API key at the top right before dropping a PO.');
     return;
