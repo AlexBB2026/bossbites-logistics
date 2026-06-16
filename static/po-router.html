@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PO → Warehouse Router | Boss Bites</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --accent: #4a9eff;
+    --accent2: #a0cfff;
+    --text: #f0f0f0;
+    --muted: #888;
+    --danger: #f04a4a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .app { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 2rem; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .header-left h1 { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; color: #ffffff; letter-spacing: -0.5px; }
+  .header-left p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .api-key-wrap { display: flex; align-items: center; gap: 8px; }
+  .api-key-wrap label { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
+  .api-key-wrap input {
+    background: var(--surface); border: 0.5px solid var(--border);
+    color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    padding: 6px 10px; border-radius: 4px; width: 280px; outline: none;
+  }
+  .api-key-wrap input:focus { border-color: var(--accent); }
+
+  /* ── Rate table toggle ── */
+  .rate-toggle { margin-bottom: 1.5rem; }
+  .rate-toggle summary {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px; cursor: pointer; user-select: none;
+    padding: 8px 0; list-style: none; display: flex; align-items: center; gap: 6px;
+  }
+  .rate-toggle summary::before { content: '▶'; font-size: 9px; transition: transform 0.2s; }
+  .rate-toggle[open] summary::before { transform: rotate(90deg); }
+  .rate-toggle summary::-webkit-details-marker { display: none; }
+
+  /* ── Drop zone ── */
+  .drop-zone {
+    border: 1.5px dashed var(--border); border-radius: 8px;
+    padding: 3rem 2rem; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface); position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: #0a0e1a; }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-icon { font-size: 36px; margin-bottom: 12px; }
+  .drop-label { font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: var(--text); }
+  .drop-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* ── Status ── */
+  .status-bar {
+    display: none; align-items: center; gap: 10px;
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 6px; padding: 10px 14px; margin-top: 1rem;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .dot.active { background: var(--accent); animation: pulse 1.2s infinite; }
+  .dot.done { background: var(--accent2); }
+  .dot.error { background: var(--danger); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── Error ── */
+  .error-box {
+    display: none; background: #1a0f0f;
+    border: 0.5px solid var(--danger); border-radius: 8px;
+    padding: 1rem 1.25rem; margin-top: 1rem;
+    font-size: 13px; color: #f09090;
+    font-family: 'IBM Plex Mono', monospace; line-height: 1.6;
+  }
+
+  /* ── Result ── */
+  .result { display: none; margin-top: 1.5rem; }
+  .result.visible { display: block; }
+
+  .section-title {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; margin-top: 1.5rem;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  .po-meta { background: var(--surface); border: 0.5px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; }
+  .po-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+  .meta-item label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-family: 'IBM Plex Mono', monospace; }
+  .meta-item span { font-size: 14px; font-weight: 500; display: block; margin-top: 2px; }
+
+  .recommendation {
+    background: var(--surface2); border: 1.5px solid var(--accent);
+    border-radius: 8px; padding: 1.25rem;
+  }
+  .rec-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .rec-badge { background: var(--accent); color: #ffffff; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; }
+  .rec-warehouse { font-size: 18px; font-weight: 500; }
+  .rec-price { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; color: var(--accent); }
+  .rec-detail { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  .alt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .alt-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .alt-card .alt-wh { font-size: 13px; font-weight: 500; }
+  .alt-card .alt-price { font-family: 'IBM Plex Mono', monospace; font-size: 18px; color: var(--accent2); margin-top: 4px; }
+  .alt-card .alt-note { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .rate-table-wrap { overflow-x: auto; margin-top: 0.5rem; }
+  table.rates { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 600px; }
+  table.rates th {
+    background: var(--surface2); color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500;
+    padding: 7px 10px; text-align: center; border-bottom: 0.5px solid var(--border);
+  }
+  table.rates th:first-child { text-align: left; }
+  table.rates td { padding: 7px 10px; text-align: center; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  table.rates td:first-child { text-align: left; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .rate-win { color: var(--accent); font-weight: 600; }
+  .rate-ftl { color: #555; }
+  .rate-selected { background: #0a0e1a !important; }
+
+  .reasoning {
+    background: var(--surface); border-left: 3px solid var(--accent2);
+    border-radius: 0 6px 6px 0; padding: 1rem 1.25rem;
+    font-size: 13px; line-height: 1.7; color: #ccc;
+  }
+
+
+  .history-section { margin-top: 2rem; }
+  .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 8px; }
+  .history-card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .history-card:hover { border-color: var(--accent); }
+  .history-card .hc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .history-card .hc-po { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text); }
+  .history-card .hc-date { font-size: 10px; color: var(--muted); }
+  .history-card .hc-dest { font-size: 12px; color: var(--accent2); margin-bottom: 4px; }
+  .history-card .hc-winner { font-size: 13px; font-weight: 500; }
+  .history-card .hc-cost { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--accent); }
+  .history-card .hc-retailer { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .history-clear { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; margin-left: 12px; }
+  .history-clear:hover { color: var(--danger); }
+
+  .mode-toggle { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  .mode-btn {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 6px 14px;
+    border-radius: 4px; cursor: pointer; border: 0.5px solid var(--border);
+    background: transparent; color: var(--muted); transition: all 0.2s;
+  }
+  .mode-btn.active { border-color: var(--accent); color: var(--accent); background: #0a0e1a; }
+  .manual-form {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;
+  }
+  .manual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .manual-field label { font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+  .manual-field select, .manual-field input {
+    width: 100%; background: var(--surface2); border: 0.5px solid var(--border);
+    color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    padding: 8px 10px; border-radius: 4px; outline: none;
+  }
+  .manual-field select:focus, .manual-field input:focus { border-color: var(--accent); }
+  .manual-submit {
+    background: var(--accent); color: #0f0f0f; font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; font-weight: 600; padding: 8px 20px; border: none;
+    border-radius: 4px; cursor: pointer; width: 100%;
+  }
+  .manual-submit:hover { opacity: 0.9; }
+  .reset-btn {
+    margin-top: 1.5rem; background: transparent;
+    border: 0.5px solid var(--border); color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    padding: 8px 16px; border-radius: 4px; cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Inline rate reference table ── */
+  .ref-table-wrap { overflow-x: auto; margin-top: 10px; }
+  table.ref { border-collapse: collapse; font-size: 11px; width: 100%; min-width: 700px; }
+  table.ref th { background: var(--surface2); color: var(--muted); font-family: 'IBM Plex Mono', monospace; padding: 5px 8px; text-align: center; border: 0.5px solid var(--border); }
+  table.ref th:first-child { text-align: left; }
+  table.ref td { padding: 5px 8px; text-align: center; border: 0.5px solid var(--border); color: var(--text); }
+  table.ref td:first-child { text-align: left; color: var(--muted); }
+  table.ref .ftl-ref { color: #555; }
+  .wh-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent); background: #0a0e1a; padding: 4px 10px; border-radius: 3px; margin-bottom: 6px; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <!-- Tab Navigation -->
+  <div style="display:flex;gap:0;margin-bottom:2rem;border-bottom:0.5px solid var(--border)">
+    <button id="tabPO" onclick="switchTab('po')" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:10px 20px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--accent);cursor:pointer">PO ROUTER</button>
+    <button id="tabProd" onclick="switchTab('prod')" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:10px 20px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer">PRODUCTION RUN</button>
+    <button id="tabMap" onclick="switchTab('map')" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:10px 20px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer">NETWORK MAP</button>
+    <button id="tabHE" onclick="switchTab('he')" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:10px 20px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer">HEAT &amp; EAT</button>
+  </div>
+
+  <!-- PO Router Tab -->
+  <div id="tabContentPO">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>BOSS<span style="color:#e8213a">B</span>ITES · LOGISTICS CALCULATOR</h1>
+      <p>Arcadia via RMX · CSW via RMX · CSW via CHR</p>
+    </div>
+    <div class="api-key-wrap">
+      <label>ANTHROPIC KEY</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-..." value=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; />
+    </div>
+  </div>
+
+  <!-- Rate reference (collapsed) -->
+  <details class="rate-toggle">
+    <summary>View rate tables</summary>
+    <div style="margin-top:12px">
+      <div class="wh-label">ARCADIA — Hazle Township, PA</div>
+      <div class="ref-table-wrap" id="arcadiaRefTable"></div>
+      <div class="wh-label" style="margin-top:14px">CSW via RMX</div>
+      <div class="ref-table-wrap" id="cswRefTable"></div>
+    </div>
+  </details>
+
+
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btnPDF" onclick="setMode('pdf')">📄 PDF UPLOAD</button>
+    <button class="mode-btn" id="btnManual" onclick="setMode('manual')">✏️ MANUAL ENTRY</button>
+  </div>
+
+  <!-- Manual form -->
+  <div class="manual-form" id="manualForm" style="display:none">
+    <div class="manual-grid">
+      <div class="manual-field">
+        <label>Destination DC</label>
+        <select id="manualDest">
+          <option value="">Select destination...</option>
+          <option>Upper Marlboro MD</option>
+          <option>Windsor CT</option>
+          <option>West Jefferson OH</option>
+          <option>Lake City FL</option>
+          <option>Denton TX</option>
+          <option>Cedar Falls IA</option>
+          <option>Thornton CO</option>
+          <option>Rialto CA</option>
+          <option>Sacramento CA</option>
+          <option>UNFI Rocklin CA</option>
+          <option>Gouldsboro PA</option>
+          <option>Hatfield PA</option>
+          <option>Westfield MA</option>
+          <option>York PA</option>
+        </select>
+      </div>
+      <div class="manual-field">
+        <label>Pallets</label>
+        <input type="number" id="manualPallets" min="1" max="26" placeholder="e.g. 5" />
+      </div>
+      <div class="manual-field">
+        <label>PO Number (optional)</label>
+        <input type="text" id="manualPO" placeholder="e.g. 0288-1234" />
+      </div>
+      <div class="manual-field">
+        <label>Retailer (optional)</label>
+        <input type="text" id="manualRetailer" placeholder="e.g. Target" />
+      </div>
+    </div>
+    <button class="manual-submit" onclick="runManual()">CALCULATE BEST ROUTE</button>
+  </div>
+  <!-- Drop zone -->
+  <div <div id="chr-panel" style="background:#1a1a1a;border:0.5px solid #2e2e2e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a9eff;text-transform:uppercase;letter-spacing:1px;font-weight:600;">CHR Fuel Surcharge &amp; Accessorials</span><span style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;">Applied to CSW via CHR only</span></div>
+  <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;">
+    <div><label style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">CHR Fuel Surcharge %</label>
+    <div style="display:flex;align-items:center;gap:8px;"><input type="number" id="fscPct" step="0.1" min="0" max="100" value="28.0" style="width:80px;background:#222;border:0.5px solid #3e3e3e;color:#f0f0f0;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:6px 8px;border-radius:4px;" oninput="updateCHRSurcharge()"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#888;">% of linehaul</span></div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_detention" onchange="updateCHRSurcharge()"> Detention <input type="number" id="det_hours" min="1" max="24" value="1" style="width:36px;margin-left:4px;background:#1a1a1a;border:0.5px solid #3e3e3e;color:#f0f0f0;font-size:11px;padding:2px 4px;border-radius:3px;" oninput="updateCHRSurcharge()"> hrs ($75/hr)</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_layover" onchange="updateCHRSurcharge()"> Layover ($500)</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_liftgate" onchange="updateCHRSurcharge()"> Liftgate $<input type="number" id="liftgate_amt" min="0" value="0" style="width:55px;margin-left:2px;background:#1a1a1a;border:0.5px solid #3e3e3e;color:#f0f0f0;font-size:11px;padding:2px 4px;border-radius:3px;" oninput="updateCHRSurcharge()"></label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_lumper" onchange="updateCHRSurcharge()"> Lumper $<input type="number" id="lumper_amt" min="0" value="0" style="width:55px;margin-left:2px;background:#1a1a1a;border:0.5px solid #3e3e3e;color:#f0f0f0;font-size:11px;padding:2px 4px;border-radius:3px;" oninput="updateCHRSurcharge()"></label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_tonu" onchange="updateCHRSurcharge()"> TONU ($250)</label>
+    </div>
+  </div>
+  <div id="chr-surcharge-summary" style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#666;"></div>
+</div>
+<div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".pdf" />
+    <div class="drop-icon">📄</div>
+    <div class="drop-label">Drop PO PDF here or click to browse</div>
+    <div class="drop-sub">Reads any standard purchase order — extracts destination, pallets, ship date, SKUs</div>
+  </div>
+
+
+  </div><!-- end tabContentPO -->
+  <div id="tabContentHE" style="display:none;padding:1rem 0;">
+    <div style="background:#111;border:0.5px solid #2e2e2e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#f0c84a;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Heat &amp; Eat — USCS Fresno CA</span>
+      <span style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;margin-left:12px;">2525 E North Ave, Fresno CA 93725 · FTL only · Inbound $376/load · Storage 3.7c/unit/mo</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1rem;">
+      <div>
+        <label style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Destination</label>
+        <select id="heDestSelect" onchange="calcHE()" style="width:100%;background:#1a1a1a;border:0.5px solid #3e3e3e;color:#f0f0f0;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;border-radius:4px;">
+          <option value="">Select destination</option>
+          <option value="Gouldsboro PA">Wakefern - Gouldsboro PA</option>
+          <option value="Hatfield PA">Wakefern - Hatfield PA</option>
+          <option value="York PA">C&S - York PA</option>
+          <option value="Westfield MA">C&S - Westfield MA</option>
+          <option value="Mountville PA">Ahold - Mountville PA</option>
+          <option value="West Jefferson OH">Target - West Jefferson OH</option>
+          <option value="Windsor CT">Target - Windsor CT</option>
+          <option value="Upper Marlboro MD">Target - Upper Marlboro MD</option>
+          <option value="Lake City FL">Target - Lake City FL</option>
+          <option value="Denton TX">Target - Denton TX</option>
+          <option value="Cedar Falls IA">Target - Cedar Falls IA</option>
+          <option value="Rialto CA">Target - Rialto CA</option>
+          <option value="Sacramento CA">Target - Sacramento CA</option>
+          <option value="Thornton CO">Target - Thornton CO</option>
+          <option value="UNFI Rocklin CA">UNFI - Rocklin CA</option>
+          <option value="Franklin IN">Kroger - Franklin IN</option>
+          <option value="Disputanta VA">Food Lion - Disputanta VA</option>
+          <option value="Mauldin SC">Food Lion - Mauldin SC</option>
+          <option value="Elloree SC">Food Lion - Elloree SC</option>
+          <option value="Dunn NC">Food Lion - Dunn NC</option>
+          <option value="Greencastle PA">Food Lion - Greencastle PA</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Pallets</label>
+        <input type="number" id="hePallets" min="1" max="28" value="28" onchange="calcHE()" style="width:100%;background:#1a1a1a;border:0.5px solid #3e3e3e;color:#f0f0f0;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;border-radius:4px;">
+      </div>
+    </div>
+    <div id="heResult" style="margin-top:1rem;"></div>
+    <div style="margin-top:1.5rem;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">All Fresno FTL Rates — sorted by rate</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'IBM Plex Mono',monospace;">
+        <thead><tr style="border-bottom:0.5px solid #2e2e2e;">
+          <th style="text-align:left;padding:6px 10px;color:#888;">Destination</th>
+          <th style="text-align:left;padding:6px 10px;color:#888;">Customer</th>
+          <th style="text-align:right;padding:6px 10px;color:#888;">FTL Rate</th>
+          <th style="text-align:right;padding:6px 10px;color:#888;">Inbound</th>
+          <th style="text-align:right;padding:6px 10px;color:#888;">Total landed</th>
+        </tr></thead>
+        <tbody id="heRateTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tabContentMap" style="display:none;padding:1rem 0;">
+    <div id="networkMap" style="width:100%;height:600px;border-radius:8px;border:0.5px solid var(--border);overflow:hidden;"></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#e63946;border-radius:50%;margin-right:4px;vertical-align:middle;"></span>Production</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#2196F3;border-radius:50%;margin-right:4px;vertical-align:middle;"></span>Warehouse</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#4af0c8;border-radius:50%;margin-right:4px;vertical-align:middle;"></span>Delivery DC</span>
+    </div>
+  </div>
+
+
+  <!-- Production Run Tab -->
+  <div id="tabContentProd" style="display:none">
+    <div class="header">
+      <div class="header-left">
+        <h1>BOSS<span style="color:#e8213a">B</span>ITES · PRODUCTION RUN OPTIMIZER</h1>
+        <p>Drop all upcoming POs to get the optimal inventory routing split</p>
+      </div>
+    </div>
+
+    <div class="manual-form">
+      <div class="manual-grid">
+        <div class="manual-field">
+          <label>Total Pallets Being Produced</label>
+          <input type="number" id="prodPallets" min="1" placeholder="e.g. 56" />
+        </div>
+        <div class="manual-field">
+          <label>Production Notes (optional)</label>
+          <input type="text" id="prodNotes" placeholder="e.g. Week of 6/3, Pepperoni + Vodka" />
+        </div>
+      </div>
+      <!-- Inventory Section -->
+      <div style="margin-bottom:1.5rem">
+        <p class="section-title" style="margin-top:0">Current Inventory</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+          <!-- Arcadia upload -->
+          <div>
+            <div class="manual-field" style="margin-bottom:8px">
+              <label>Arcadia Inventory — Upload Report</label>
+            </div>
+            <div style="border:0.5px dashed var(--border);border-radius:6px;padding:12px;text-align:center;cursor:pointer;position:relative;background:var(--surface2)" id="invDropZone">
+              <input type="file" id="invFileInput" accept=".xlsx,.xls" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" />
+              <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">DROP EXCEL FILE</div>
+              <div id="invFileName" style="font-size:11px;color:var(--accent);margin-top:4px"></div>
+            </div>
+            <div id="arcadiaInvDisplay" style="margin-top:8px;font-size:11px;color:var(--muted)"></div>
+          </div>
+          <!-- CSW manual -->
+          <div>
+            <div class="manual-field" style="margin-bottom:8px">
+              <label>CSW Inventory — Enter Cases Manually</label>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="cswInvFields">
+              <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">12" Cheese</div><input type="number" id="csw_che" placeholder="0" style="width:100%;background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:5px 8px;border-radius:4px;outline:none" /></div>
+              <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">12" Pepperoni</div><input type="number" id="csw_pep" placeholder="0" style="width:100%;background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:5px 8px;border-radius:4px;outline:none" /></div>
+              <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">12" Three Meat</div><input type="number" id="csw_tmt" placeholder="0" style="width:100%;background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:5px 8px;border-radius:4px;outline:none" /></div>
+              <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">12" Vodka</div><input type="number" id="csw_vdk" placeholder="0" style="width:100%;background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:5px 8px;border-radius:4px;outline:none" /></div>
+              <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Grandma Cheese</div><input type="number" id="csw_gche" placeholder="0" style="width:100%;background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:5px 8px;border-radius:4px;outline:none" /></div>
+              <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Grandma Pepperoni</div><input type="number" id="csw_gpep" placeholder="0" style="width:100%;background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:5px 8px;border-radius:4px;outline:none" /></div>
+              <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Grandma Vodka</div><input type="number" id="csw_gvdk" placeholder="0" style="width:100%;background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:5px 8px;border-radius:4px;outline:none" /></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;font-size:12px;color:var(--muted)">Drop all upcoming PO PDFs below — Claude will read them all and recommend the optimal routing split across Arcadia and CSW.</div>
+      <div class="drop-zone" id="prodDropZone" style="padding:2rem;position:relative">
+        <input type="file" id="prodFileInput" accept=".pdf" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" />
+        <div class="drop-icon">📦</div>
+        <div class="drop-label">Drop multiple PO PDFs here</div>
+        <div class="drop-sub" id="prodFileCount">No files selected</div>
+      </div>
+      <div id="prodFileList" style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.8"></div>
+      <button class="manual-submit" style="margin-top:12px" onclick="runProductionAnalysis()">ANALYZE PRODUCTION RUN</button>
+    </div>
+
+    <div id="prodStatus" style="display:none;margin-top:1rem" class="status-bar">
+      <div class="dot active" id="prodDot"></div>
+      <span id="prodStatusText">Processing POs...</span>
+    </div>
+    <div id="prodResult" style="margin-top:1.5rem"></div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section" id="historySection" style="display:none">
+    <p class="section-title" style="display:flex;align-items:center">
+      RECENT SEARCHES
+      <button class="history-clear" onclick="clearHistory()">CLEAR ALL</button>
+    </p>
+    <div class="history-grid" id="historyGrid"></div>
+  </div>
+  <div class="status-bar" id="statusBar">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">Processing...</span>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="result" id="result"></div>
+</div>
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const FRESNO_FTL = {
+  'Gouldsboro PA':     { rate: 9500,  customer: 'Wakefern' },
+  'Hatfield PA':       { rate: 9500,  customer: 'Wakefern' },
+  'York PA':           { rate: 9500,  customer: 'C&S' },
+  'Westfield MA':      { rate: 10500, customer: 'C&S' },
+  'Mountville PA':     { rate: 9500,  customer: 'Ahold' },
+  'West Jefferson OH': { rate: 8000,  customer: 'Target' },
+  'Windsor CT':        { rate: 10500, customer: 'Target' },
+  'Upper Marlboro MD': { rate: 10000, customer: 'Target' },
+  'Lake City FL':      { rate: 9700,  customer: 'Target' },
+  'Denton TX':         { rate: 5800,  customer: 'Target' },
+  'Cedar Falls IA':    { rate: 7000,  customer: 'Target' },
+  'Rialto CA':         { rate: 1200,  customer: 'Target' },
+  'Sacramento CA':     { rate: 1200,  customer: 'Target' },
+  'Thornton CO':       { rate: 5200,  customer: 'Target' },
+  'UNFI Rocklin CA':   { rate: 1200,  customer: 'UNFI' },
+  'Franklin IN':       { rate: 7800,  customer: 'Kroger' },
+  'Disputanta VA':     { rate: 10200, customer: 'Food Lion' },
+  'Mauldin SC':        { rate: 9200,  customer: 'Food Lion' },
+  'Elloree SC':        { rate: 9200,  customer: 'Food Lion' },
+  'Dunn NC':           { rate: 9400,  customer: 'Food Lion' },
+  'Greencastle PA':    { rate: 9500,  customer: 'Food Lion' },
+};
+const HE_INBOUND=376, HE_STORAGE=0.037, HE_UPP=648, HE_FTL=28;
+
+function calcHE() {
+  const dest = document.getElementById('heDestSelect').value;
+  const pallets = parseInt(document.getElementById('hePallets').value)||28;
+  const res = document.getElementById('heResult');
+  if (!dest) { res.innerHTML=''; return; }
+  const d = FRESNO_FTL[dest];
+  if (!d) { res.innerHTML='<div style="color:#f04a4a;font-family:IBM Plex Mono,monospace;font-size:12px;">No rate on file.</div>'; return; }
+  const units=pallets*HE_UPP, inbound=(pallets/HE_FTL)*HE_INBOUND, storage=HE_STORAGE*units;
+  const ftlTotal=d.rate+inbound+storage;
+  // RMX rates - use existing ARCADIA and CSW tables
+  const arcRMX = getTotalCost('arcadia', dest, pallets);
+  const cswRMX = getTotalCost('csw', dest, pallets);
+  // Check raw rate tables to see if LTL is available at this pallet count
+  const arcRow = ARCADIA[dest]; const cswRow = CSW[dest];
+  const arcLTLok = arcRow && pallets <= 9 && arcRow[pallets-1] !== null && arcRow[pallets-1] !== 'FTL';
+  const cswLTLok = cswRow && pallets <= 9 && cswRow[pallets-1] !== null && cswRow[pallets-1] !== 'FTL';
+  const rmxLTLAvail = arcLTLok && cswLTLok;
+  const rmxWinner = rmxLTLAvail ? (arcRMX && cswRMX ? (arcRMX.total < cswRMX.total ? 'arcadia' : 'csw') : arcRMX ? 'arcadia' : cswRMX ? 'csw' : null) : null;
+  const rmxBest = rmxWinner === 'arcadia' ? arcRMX : rmxWinner === 'csw' ? cswRMX : null;
+  const rmxLabel = rmxWinner === 'arcadia' ? 'Arcadia via RMX' : rmxWinner === 'csw' ? 'CSW via RMX' : null;
+    const chrOutbound=getCHRRate(dest,pallets);
+  const fscPct=chrSurcharges.fscPct||0.28;
+  const chrFSC=chrOutbound?chrOutbound*fscPct:null;
+  const chrAcc=chrOutbound?getCHRAccessorialTotal(chrOutbound):null;
+  const chrTotal=chrOutbound?chrOutbound+chrFSC+chrAcc+inbound+storage:null;
+  const winner=chrTotal&&chrTotal<ftlTotal?'CHR':'FTL';
+  const savings=chrTotal?Math.abs(ftlTotal-chrTotal):0;
+  res.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+    <div style="background:#111;border:0.5px solid ${winner==='FTL'?'#f0c84a':'#2e2e2e'};border-radius:8px;padding:1.25rem;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">FTL from Fresno${winner==='FTL'?' ✓ LOWEST':''}</div>
+      <div style="font-size:24px;font-weight:500;color:#f0c84a;margin-bottom:4px;">$${Math.round(ftlTotal).toLocaleString()}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#888;margin-bottom:10px;">$${(ftlTotal/units).toFixed(3)}/unit</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#666;border-top:0.5px solid #2e2e2e;padding-top:8px;line-height:2;">
+        <span>Outbound FTL: <b style="color:#f0f0f0">$${d.rate.toLocaleString()}</b></span><br>
+        <span>Inbound: <b style="color:#f0f0f0">$${Math.round(inbound).toLocaleString()}</b></span><br>
+        <span>Storage: <b style="color:#f0f0f0">$${Math.round(storage).toLocaleString()}</b></span>
+      </div>
+    </div>
+    <div style="background:#111;border:0.5px solid ${winner==='CHR'?'#4af0c8':'#2e2e2e'};border-radius:8px;padding:1.25rem;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Fresno via CHR${winner==='CHR'?' ✓ LOWEST':''}</div>
+      ${chrTotal?`<div style="font-size:24px;font-weight:500;color:#4af0c8;margin-bottom:4px;">$${Math.round(chrTotal).toLocaleString()}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#888;margin-bottom:10px;">$${(chrTotal/units).toFixed(3)}/unit</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#666;border-top:0.5px solid #2e2e2e;padding-top:8px;line-height:2;">
+        <span>Outbound LTL: <b style="color:#f0f0f0">$${Math.round(chrOutbound).toLocaleString()}</b></span><br>
+        <span>FSC (${(fscPct*100).toFixed(1)}%): <b style="color:#f0c84a">$${Math.round(chrFSC).toLocaleString()}</b></span><br>
+        <span>Inbound: <b style="color:#f0f0f0">$${Math.round(inbound).toLocaleString()}</b></span><br>
+        <span>Storage: <b style="color:#f0f0f0">$${Math.round(storage).toLocaleString()}</b></span>
+      </div>`:'<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#666;margin-top:8px;">No CHR rate on file.</div>'}
+    </div>
+    ${rmxBest ? `<div style="background:#111;border:0.5px solid ${rmxBest.total<ftlTotal&&(!chrTotal||rmxBest.total<chrTotal)?'#4af0c8':'#2e2e2e'};border-radius:8px;padding:1.25rem;">` : '<div style="display:none">'}
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">${rmxLabel||'RMX LTL'}${rmxBest&&rmxBest.total<ftlTotal&&(!chrTotal||rmxBest.total<chrTotal)?' ✓ LOWEST':''}</div>
+      ${rmxBest?`<div style="font-size:24px;font-weight:500;color:#4af0c8;margin-bottom:4px;">$${Math.round(rmxBest.total).toLocaleString()}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#888;margin-bottom:10px;">$${(rmxBest.total/units).toFixed(3)}/unit</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#666;border-top:0.5px solid #2e2e2e;padding-top:8px;line-height:2;">
+        <span>Outbound LTL: <b style="color:#f0f0f0">$${Math.round(rmxBest.outbound).toLocaleString()}</b></span><br>
+        <span>Inbound: <b style="color:#f0f0f0">$${Math.round(rmxBest.inbound).toLocaleString()}</b></span><br>
+        <span>Storage: <b style="color:#f0f0f0">$${Math.round(rmxBest.storage).toLocaleString()}</b></span>
+      </div>`:'<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#666;margin-top:8px;">No RMX rate on file.</div>'}
+    </div>
+  </div>
+  ${(()=>{const vals=[{n:'FTL',v:ftlTotal},{n:'Fresno via CHR',v:chrTotal},{n:rmxLabel,v:rmxBest?.total}].filter(x=>x.v);const best=vals.reduce((a,b)=>a.v<b.v?a:b);const second=vals.filter(x=>x.n!==best.n).reduce((a,b)=>a.v<b.v?a:b,{v:Infinity});return vals.length>1?`<div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#888;text-align:center;"><b style="color:#4af0c8">${best.n}</b> is cheapest — saves <b style="color:#4af0c8">$${Math.round(second.v-best.v).toLocaleString()}</b> vs next option</div>`:''})()}`;
+}
+
+function buildHERateTable() {
+  const tbody=document.getElementById('heRateTable');
+  if(!tbody)return;
+  const units=HE_FTL*HE_UPP, storage=HE_STORAGE*units;
+  tbody.innerHTML=Object.entries(FRESNO_FTL).sort((a,b)=>a[1].rate-b[1].rate).map(([dest,d],i)=>{
+    const total=d.rate+HE_INBOUND+storage;
+    return `<tr style="border-bottom:0.5px solid #1e1e1e;${i%2===0?'background:#0d0d0d':''}">
+      <td style="padding:6px 10px;color:#f0f0f0;">${dest}</td>
+      <td style="padding:6px 10px;color:#888;">${d.customer}</td>
+      <td style="padding:6px 10px;text-align:right;color:#f0c84a;">$${d.rate.toLocaleString()}</td>
+      <td style="padding:6px 10px;text-align:right;color:#888;">$${HE_INBOUND}</td>
+      <td style="padding:6px 10px;text-align:right;color:#4af0c8;">$${Math.round(total).toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+}
+document.addEventListener('DOMContentLoaded', buildHERateTable);
+
+</script>
+<script>document.addEventListener('DOMContentLoaded',()=>updateCHRSurcharge());</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ─────────────────────────────────────────────
+// RATE DATA
+// ─────────────────────────────────────────────
+const ARCADIA = {
+  'Upper Marlboro MD': [375,750,1125,'FTL','FTL','FTL','FTL','FTL','FTL',1400],
+  'Windsor CT':        [375,750,1125,1500,'FTL','FTL','FTL','FTL','FTL',1700],
+  'West Jefferson OH': [250,500,750,1000,1250,'FTL','FTL','FTL','FTL',1400],
+  'Lake City FL':      [375,750,1125,1500,1875,2250,2625,3000,3375,3500],
+  'Denton TX':         [375,750,1125,1500,1875,2250,2625,3000,3375,3500],
+  'Cedar Falls IA':    [313,625,938,1250,1563,1875,2188,2500,'FTL',2500],
+  'Thornton CO':       [375,750,1125,1500,1875,2250,2625,3000,3375,4200],
+  'Rialto CA':         [438,875,1313,1750,2188,2625,3063,3500,3938,6000],
+  'Sacramento CA':     [438,875,1313,1750,2188,2625,3063,3500,3938,6000],
+  'UNFI Rocklin CA':   [438,875,1313,1750,2188,2625,3063,3500,3938,6000],
+  'Gouldsboro PA':     [375,750,1125,'FTL','FTL','FTL','FTL','FTL','FTL',1200],
+  'Hatfield PA':       [375,750,1125,'FTL','FTL','FTL','FTL','FTL','FTL',1200],
+  'Westfield MA':      [375,750,1125,1500,'FTL','FTL','FTL','FTL','FTL',1600],
+  'York PA':           [375,750,1125,'FTL','FTL','FTL','FTL','FTL','FTL',1200],
+};
+
+const CSW = {
+  'Upper Marlboro MD': [313,625,938,1250,1563,1875,2188,2500,2813,3800],
+  'Windsor CT':        [313,625,938,1250,1563,1875,2188,2500,2813,4600],
+  'West Jefferson OH': [188,375,563,750,938,1125,1315,1515,1750,2200],
+  'Lake City FL':      [375,750,1125,1500,1875,2250,2625,3000,3375,4400],
+  'Denton TX':         [313,625,938,1250,1563,1875,2188,2500,2813,3500],
+  'Cedar Falls IA':    [188,375,563,750,938,1125,'FTL','FTL','FTL',1200],
+  'Thornton CO':       [313,625,938,1250,1563,1875,2188,2500,2813,4200],
+  'Rialto CA':         [375,750,1125,1500,1875,2250,2625,3000,3375,4800],
+  'Sacramento CA':     [375,750,1125,1500,1875,2250,2625,3000,3375,4800],
+  'UNFI Rocklin CA':   [375,750,1125,1500,1875,2250,2625,3000,3375,4800],
+  'Gouldsboro PA':     [313,625,938,1250,1563,1875,2188,2500,2813,3600],
+  'Hatfield PA':       [313,625,938,1250,1563,1875,2188,2500,2813,3600],
+  'Westfield MA':      [313,625,938,1250,1563,1875,2188,2500,2813,4600],
+  'York PA':           [313,625,938,1250,1563,1875,2188,2500,2813,3600],
+};
+const CHR = {
+  'Upper Marlboro MD': [344, 275, 275, 248, 248, 222, 222, 201, 201, 179],
+  'Windsor CT':        [360, 288, 288, 260, 260, 233, 233, 212, 212, 189],
+  'West Jefferson OH': [288, 198, 198, 175, 175, 150, 150, 130, 130, 110],
+  'Lake City FL':      [379, 303, 303, 273, 273, 246, 246, 224, 224, 201],
+  'Denton TX':         [304, 243, 243, 219, 219, 195, 195, 175, 175, 154],
+  'Cedar Falls IA':    [244, 168, 168, 149, 149, 126, 126, 108, 108, 88],
+  'Thornton CO':       [427, 294, 294, 258, 258, 226, 226, 202, 202, 178],
+  'Rialto CA':         [394, 315, 315, 284, 284, 256, 256, 233, 233, 210],
+  'Sacramento CA':     [453, 335, 335, 299, 299, 267, 267, 241, 241, 218],
+  'UNFI Rocklin CA':   [453, 335, 335, 299, 299, 267, 267, 241, 241, 218],
+  'Gouldsboro PA':     [337, 269, 269, 243, 243, 217, 217, 196, 196, 174],
+  'Hatfield PA':       [337, 269, 269, 243, 243, 217, 217, 196, 196, 174],
+  'Westfield MA':      [383, 306, 306, 276, 276, 248, 248, 226, 226, 203],
+  'York PA':           [337, 269, 269, 243, 243, 217, 217, 196, 196, 174],
+};
+// CHR rates are per-pallet-position x pallets (not flat totals like Arcadia/CSW)
+// Tier logic: 1=Min, 2-4=tier2, 5-9=tier3, 10-14=tier4, 15-19=tier5, 20+=tier6
+function getCHRRate(dest, pallets) {
+  const row = CHR[dest];
+  if (!row) return null;
+  let idx;
+  if (pallets === 1) idx = 0;
+  else if (pallets <= 4) idx = 1;
+  else if (pallets <= 9) idx = 4;
+  else if (pallets <= 14) idx = 6;
+  else if (pallets <= 19) idx = 8;
+  else idx = 9;
+  return row[idx] * pallets;
+}
+
+
+const FSC_TABLE=[[0,1.199,0],[1.2,1.229,0.0035],[1.23,1.258,0.007],[1.26,1.288,0.0105],[1.29,1.319,0.014],[1.32,1.349,0.0175],[1.35,1.379,0.021],[1.38,1.409,0.0245],[1.41,1.439,0.028],[1.44,1.469,0.0315],[1.47,1.499,0.035],[1.5,1.528,0.0385],[1.53,1.558,0.042],[1.56,1.589,0.0455],[1.59,1.619,0.049],[1.62,1.649,0.0525],[1.65,1.679,0.056],[1.68,1.709,0.0595],[1.71,1.739,0.063],[1.74,1.768,0.0665],[1.77,1.799,0.07],[1.8,1.829,0.0735],[1.83,1.859,0.077],[1.86,1.889,0.0805],[1.89,1.919,0.084],[1.92,1.949,0.0875],[1.95,1.979,0.091],[1.98,2.009,0.0945],[2.01,2.039,0.098],[2.04,2.069,0.1015],[2.07,2.099,0.105],[2.1,2.129,0.1085],[2.13,2.159,0.112],[2.16,2.189,0.1155],[2.19,2.219,0.119],[2.22,2.249,0.1225],[2.25,2.279,0.126],[2.28,2.309,0.1295],[2.31,2.339,0.133],[2.34,2.369,0.1365],[2.37,2.399,0.14],[2.4,2.429,0.1435],[2.43,2.459,0.147],[2.46,2.489,0.1505],[2.49,2.519,0.154],[2.52,2.549,0.1575],[2.55,2.579,0.161],[2.58,2.609,0.1645],[2.61,2.639,0.168],[2.64,2.669,0.1715],[2.67,2.699,0.175],[2.7,2.729,0.1785],[2.73,2.759,0.182],[2.76,2.789,0.1855],[2.79,2.819,0.189],[2.82,2.849,0.1925],[2.85,2.879,0.196],[2.88,2.909,0.1995],[2.91,2.939,0.203],[2.94,2.969,0.2065],[2.97,2.999,0.21],[3.0,3.029,0.2135],[3.03,3.059,0.217],[3.06,3.089,0.2205],[3.09,3.119,0.224],[3.12,3.149,0.2275],[3.15,3.179,0.231],[3.18,3.209,0.2345],[3.21,3.239,0.238],[3.24,3.269,0.2415],[3.27,3.299,0.245],[3.3,3.329,0.2485],[3.33,3.359,0.252],[3.36,3.389,0.2555],[3.39,3.419,0.259],[3.42,3.449,0.2625],[3.45,3.479,0.266],[3.48,3.509,0.2695],[3.51,3.539,0.273],[3.54,3.569,0.2765],[3.57,3.599,0.28],[3.6,9999,0.2835]];
+function getFSCPct(d){for(const [f,t,p] of FSC_TABLE){if(d>=f&&d<=t)return p;}return 0.2835;}
+const chrSurcharges={fscPct:0.28,detention:false,detentionHours:0,layover:false,liftgate:false,liftgateAmt:0,lumper:false,lumperAmt:0,tonu:false};
+function getCHRFSC(o){return o*(chrSurcharges.fscPct||0.28);}
+function getCHRAccessorialTotal(o){let a=0;if(chrSurcharges.detention)a+=Math.max(0,chrSurcharges.detentionHours)*75;if(chrSurcharges.layover)a+=500;if(chrSurcharges.liftgate)a+=chrSurcharges.liftgateAmt;if(chrSurcharges.lumper)a+=chrSurcharges.lumperAmt;if(chrSurcharges.tonu)a+=250;return a;}
+function updateCHRSurcharge(){
+  const fscPctVal=(parseFloat(document.getElementById('fscPct').value)||28.0)/100;
+  chrSurcharges.fscPct=fscPctVal;
+  chrSurcharges.detention=document.getElementById('chk_detention').checked;
+  chrSurcharges.detentionHours=parseInt(document.getElementById('det_hours').value)||0;
+  chrSurcharges.layover=document.getElementById('chk_layover').checked;
+  chrSurcharges.liftgate=document.getElementById('chk_liftgate').checked;
+  chrSurcharges.liftgateAmt=parseFloat(document.getElementById('liftgate_amt').value)||0;
+  chrSurcharges.lumper=document.getElementById('chk_lumper').checked;
+  chrSurcharges.lumperAmt=parseFloat(document.getElementById('lumper_amt').value)||0;
+  chrSurcharges.tonu=document.getElementById('chk_tonu').checked;
+  const fscPct=chrSurcharges.fscPct;
+  const parts=['FSC '+(fscPct*100).toFixed(1)+'% on linehaul'];
+  if(chrSurcharges.detention)parts.push('Detention '+chrSurcharges.detentionHours+'hr = $'+(chrSurcharges.detentionHours*75));
+  if(chrSurcharges.layover)parts.push('Layover $500');
+  if(chrSurcharges.liftgate&&chrSurcharges.liftgateAmt)parts.push('Liftgate $'+chrSurcharges.liftgateAmt);
+  if(chrSurcharges.lumper&&chrSurcharges.lumperAmt)parts.push('Lumper $'+chrSurcharges.lumperAmt);
+  if(chrSurcharges.tonu)parts.push('TONU $250');
+  document.getElementById('chr-surcharge-summary').textContent='Active: '+parts.join(' · ');
+  if(window._lastPO)renderResult(window._lastPO,window._lastFilename);
+}
+const UNITS_PER_PALLET = 648;
+const INBOUND_FLAT = { arcadia: 3200, csw: 376 };
+const FTL_PALLETS = 28;
+const STORAGE_PER_UNIT = { arcadia: 0.06, csw: 0.037 };
+
+function getTotalCost(warehouse, dest, pallets) {
+  const units = pallets * UNITS_PER_PALLET;
+  let outbound;
+  if (warehouse === 'chr') {
+    outbound = getCHRRate(dest, pallets);
+    if (!outbound) return null;
+    const inbound = (pallets / FTL_PALLETS) * INBOUND_FLAT['csw'];
+    const storage = STORAGE_PER_UNIT['csw'] * units;
+    const fsc = getCHRFSC(outbound);
+    const accessorials = getCHRAccessorialTotal(outbound);
+    const chrTotal = outbound + fsc + accessorials + inbound + storage;
+    return { outbound, fsc, accessorials, inbound, storage, total: chrTotal };
+  }
+  const table = warehouse === 'arcadia' ? ARCADIA : CSW;
+  const row = table[dest];
+  if (!row) return null;
+  const idx = pallets >= 10 ? 9 : pallets - 1;
+  outbound = row[idx];
+  if (outbound === 'FTL' || outbound === null) return null;
+  const inbound = (pallets / FTL_PALLETS) * INBOUND_FLAT[warehouse];
+  const storage = STORAGE_PER_UNIT[warehouse] * units;
+  return { outbound, inbound, storage, total: outbound + inbound + storage };
+}
+
+const PAL_COLS = ['1 pal','2 pal','3 pal','4 pal','5 pal','6 pal','7 pal','8 pal','9 pal','FTL'];
+
+// ─────────────────────────────────────────────
+// BUILD REFERENCE TABLES
+// ─────────────────────────────────────────────
+function buildRefTable(data, containerId) {
+  let html = `<table class="ref"><thead><tr><th>Destination</th>`;
+  PAL_COLS.forEach(p => html += `<th>${p}</th>`);
+  html += '</tr></thead><tbody>';
+  Object.entries(data).forEach(([loc, row]) => {
+    html += `<tr><td>${loc}</td>`;
+    row.forEach(v => {
+      html += v === 'FTL'
+        ? `<td class="ftl-ref">FTL</td>`
+        : `<td>$${v.toLocaleString()}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById(containerId).innerHTML = html;
+}
+buildRefTable(ARCADIA, 'arcadiaRefTable');
+buildRefTable(CSW, 'cswRefTable');
+
+// ─────────────────────────────────────────────
+// PDF.js setup
+// ─────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ─────────────────────────────────────────────
+// UI elements
+// ─────────────────────────────────────────────
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+const statusBar  = document.getElementById('statusBar');
+const statusDot  = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const resultDiv  = document.getElementById('result');
+const errorBox   = document.getElementById('errorBox');
+const apiKeyEl   = document.getElementById('apiKey');
+
+// Persist API key in localStorage
+const STORED_KEY = localStorage.getItem('bb_api_key');
+if (STORED_KEY) apiKeyEl.value = STORED_KEY;
+apiKeyEl.addEventListener('change', () => localStorage.setItem('bb_api_key', apiKeyEl.value.trim()));
+
+// ─────────────────────────────────────────────
+// STATUS / ERROR helpers
+// ─────────────────────────────────────────────
+function setStatus(msg, state = 'active') {
+  statusBar.style.display = 'flex';
+  statusDot.className = 'dot ' + state;
+  statusText.textContent = msg;
+}
+function showError(msg) {
+  errorBox.style.display = 'block';
+  errorBox.innerHTML = '⚠ ' + msg;
+  setStatus('Error', 'error');
+}
+function clearError() { errorBox.style.display = 'none'; }
+
+// ─────────────────────────────────────────────
+// DRAG & DROP
+// ─────────────────────────────────────────────
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') handleFile(f);
+  else showError('Please drop a valid PDF file.');
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+// ─────────────────────────────────────────────
+// PDF TEXT EXTRACTION
+// ─────────────────────────────────────────────
+async function extractPDFText(file) {
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(s => s.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+async function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ─────────────────────────────────────────────
+// RATE LOOKUP
+// ─────────────────────────────────────────────
+function getRate(table, dest, pallets) {
+  const row = table[dest];
+  if (!row) return null;
+  const idx = pallets >= 10 ? 9 : pallets - 1;
+  return row[idx];
+}
+
+function buildRateCompareTable(dest, pallets) {
+  const aRow = ARCADIA[dest];
+  const cRow = CSW[dest];
+  if (!aRow || !cRow) return '';
+
+  const palIdx = pallets >= 10 ? 9 : Math.max(0, pallets - 1);
+  const av = aRow[palIdx];
+  const cv = cRow[palIdx];
+
+  let html = `<table class="rates"><thead><tr><th>Carrier</th>`;
+  PAL_COLS.forEach(p => html += `<th>${p}</th>`);
+  html += '</tr></thead><tbody>';
+
+  function row(name, data, isCHR) {
+    const displayName = isCHR ? 'CSW via CHR' : (name === 'Arcadia' ? 'Arcadia via RMX' : 'CSW via RMX');
+    let r = `<tr><td>${displayName}</td>`;
+    data.forEach((v, i) => {
+      const isSelected = i === palIdx;
+      const cls = v === 'FTL' ? 'rate-ftl' : '';
+      const selCls = isSelected ? 'rate-selected' : '';
+      const disp = v === 'FTL' ? 'FTL' : '$' + v.toLocaleString();
+      r += `<td class="${cls} ${selCls}">${disp}</td>`;
+    });
+    r += '</tr>';
+    return r;
+  }
+
+  // Build CHR row as per-pallet totals for each column
+  const chrRow = [1,2,3,4,5,6,7,8,9,10].map(p => {
+    const rate = getCHRRate(dest, p);
+    return rate ? rate : 'FTL';
+  });
+
+  // Find best value per column across all 3
+  for (let i = 0; i < 10; i++) {
+    const vals = [aRow[i], cRow[i], chrRow[i]].map(v => v === 'FTL' ? null : v).filter(v => v !== null);
+    const best = vals.length ? Math.min(...vals) : null;
+    // mark best in each row
+  }
+
+  html += row('Arcadia', aRow, false);
+  html += row('CSW', cRow, false);
+  html += row('CHR', chrRow, true);
+  html += '</tbody></table>';
+  return html;
+}
+
+// ─────────────────────────────────────────────
+// MAIN HANDLER
+// ─────────────────────────────────────────────
+async function handleFile(file) {
+  clearError();
+  resultDiv.className = 'result';
+  resultDiv.innerHTML = '';
+
+  const apiKey = apiKeyEl.value.trim() || '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';
+  if (!apiKey) {
+    showError('Enter your Anthropic API key at the top right before dropping a PO.');
+    return;
+  }
+
+  setStatus('Reading PDF...', 'active');
+
+  let base64Data = '';
+  try {
+    base64Data = await toBase64(file);
+  } catch(e) {
+    showError('Could not read PDF: ' + e.message); return;
+  }
+
+  setStatus('Sending to Claude for analysis...', 'active');
+
+  const locationList = Object.keys(ARCADIA).join(', ');
+
+  const systemPrompt = `You are a logistics routing assistant for Boss Bites, a CPG frozen pizza company. Analyze purchase orders and extract shipping details.
+
+Known destination DCs: ${locationList}
+
+Rules:
+- Extract: PO number, retailer/buyer name, ship date, destination DC, pallet count, SKUs
+- If the PO lists cases, sum ALL line item cases to get total_cases, then calculate pallets = ceil(total_cases / 54). Always round UP. Never round down.
+- Match the destination to one of the known DC names (fuzzy match by city/state — return the exact known name)
+- Determine shipment type: LTL (1–9 pallets) or FTL (10+ pallets)
+
+Respond ONLY with a valid JSON object, no markdown, no backticks, no extra text:
+{
+  "po_number": "string or null",
+  "retailer": "string or null",
+  "ship_date": "string or null",
+  "destination_raw": "what the PO says verbatim",
+  "destination_matched": "exact DC name from the list above, or null if unrecognized",
+  "pallets": integer or null,
+  "total_cases": integer or null,
+  "shipment_type": "LTL" or "FTL" or null,
+  "skus": ["array of SKU names or numbers"],
+  "sku_details": [{"sku": "name", "cases": number}],
+  "confidence": "high" or "medium" or "low",
+  "notes": "any caveats or assumptions"
+}`;
+
+  try {
+    const response = await fetch('/api/anthropic', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-calls': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } },
+            { type: 'text', text: 'Extract the shipping details from this purchase order and return only the JSON.' }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const rawText = data.content.map(b => b.text || '').join('').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+    } catch(e) {
+      throw new Error('Unexpected response from Claude. Raw: ' + rawText.slice(0, 300));
+    }
+
+    setStatus('Calculating optimal route...', 'active');
+    renderResult(parsed, file.name);
+    setStatus('Done — ' + file.name, 'done');
+
+  } catch(e) {
+    showError(e.message);
+  }
+}
+
+// ─────────────────────────────────────────────
+// RENDER RESULT
+// ─────────────────────────────────────────────
+function renderResult(po, filename) {
+  window._lastPO=po; window._lastFilename=filename;
+  const dest    = po.destination_matched;
+  // Calculate total cases from sku_details if total_cases not set
+  if (!po.total_cases && po.sku_details && po.sku_details.length) {
+    po.total_cases = po.sku_details.reduce((s, sku) => s + (sku.cases || 0), 0);
+  }
+  // Always round UP pallets
+  const pallets = po.total_cases ? Math.ceil(po.total_cases / 54) : Math.ceil(po.pallets);
+
+  const confColor = po.confidence === 'high' ? '#4af0c8' : po.confidence === 'medium' ? '#f0c84a' : '#f04a4a';
+
+  let routeHTML = '';
+
+  if (dest && pallets) {
+    const aC = getTotalCost('arcadia', dest, pallets);
+    const cC = getTotalCost('csw', dest, pallets);
+    const chrC = getTotalCost('chr', dest, pallets);
+    // Also check Arcadia FTL if LTL not available
+    const arcFTLRow = ARCADIA[dest];
+    const arcFTLRate = arcFTLRow ? arcFTLRow[9] : null;
+    const arcFTLCost = arcFTLRate && !aC ? (() => {
+      const units = pallets * UNITS_PER_PALLET;
+      const inbound = (pallets / FTL_PALLETS) * INBOUND_FLAT['arcadia'];
+      const storage = STORAGE_PER_UNIT['arcadia'] * units;
+      return { outbound: arcFTLRate, inbound, storage, total: arcFTLRate + inbound + storage, isFTL: true };
+    })() : null;
+
+    const candidates = [
+      aC ? { name: 'Arcadia', full: 'Arcadia via RMX', cost: aC } : null,
+      arcFTLCost ? { name: 'Arcadia', full: 'Arcadia FTL', cost: arcFTLCost } : null,
+      cC ? { name: 'CSW',     full: 'CSW via RMX',           cost: cC } : null,
+      chrC ? { name: 'CHR',   full: 'CSW via CHR',         cost: chrC } : null,
+    ].filter(Boolean).sort((a,b) => a.cost.total - b.cost.total);
+    const winner = candidates[0]?.name;
+    const winnerFull = candidates[0]?.full;
+    const winnerC = candidates[0]?.cost;
+    const loser = candidates[1]?.name;
+    const loserFull = candidates[1]?.full;
+    const loserC = candidates[1]?.cost;
+    const third = candidates[2];
+    const savings = (winnerC && loserC) ? loserC.total - winnerC.total : 0;
+    const av = getRate(ARCADIA, dest, pallets);
+    const cv = getRate(CSW, dest, pallets);
+
+    const palLabel = pallets >= 10 ? 'FTL' : pallets + ' pallet' + (pallets > 1 ? 's' : '');
+    const units = pallets * UNITS_PER_PALLET;
+
+    function breakdown(c, warehouse) {
+      if (!c) return '';
+      const isCHR = warehouse === 'CHR';
+      const fscLine = isCHR && c.fsc ? `<span style="margin-right:16px;color:#f0c84a">FSC (${(chrSurcharges.fscPct*100).toFixed(1)}%): <b style="color:#f0c84a">$${Math.round(c.fsc).toLocaleString()}</b> <span style="font-size:10px;color:#888">($${(c.fsc/units).toFixed(3)}/unit)</span></span>` : '';
+      const accLine = isCHR && c.accessorials ? `<span style="margin-right:16px;color:#f0c84a">Accessorials: <b style="color:#f0c84a">$${Math.round(c.accessorials).toLocaleString()}</b></span>` : '';
+      return `<div style="margin-top:10px;font-size:12px;color:var(--muted);border-top:0.5px solid var(--border);padding-top:8px;line-height:2">
+        <span style="margin-right:16px">Outbound LTL: <b style="color:var(--text)">$${c.outbound.toLocaleString()}</b> <span style="font-size:10px;color:#666">($${(c.outbound/units).toFixed(3)}/unit)</span></span>
+        ${fscLine}${accLine}
+        <span style="margin-right:16px">Inbound (Roncadin → ${warehouse === 'CHR' ? 'CSW' : warehouse}): <b style="color:var(--text)">$${c.inbound.toLocaleString()}</b> <span style="font-size:10px;color:#666">($${(c.inbound/units).toFixed(3)}/unit)</span></span>
+        <span>Storage (${units.toLocaleString()} units): <b style="color:var(--text)">$${Math.round(c.storage).toLocaleString()}</b> <span style="font-size:10px;color:#666">($${(c.storage/units).toFixed(3)}/unit)</span></span>
+      </div>`;
+    }
+
+    if (winner) {
+      if (!window._restoringFromHistory && !window._recalculating) saveToHistory(po, winner + ' — ' + (winner === 'Arcadia' ? 'Hazle Township, PA' : 'Kenosha, WI'), winnerC.total, filename);
+      routeHTML = `
+        <p class="section-title">Recommendation — True Landed Cost</p>
+        <div class="recommendation">
+          <div class="rec-header">
+            <span class="rec-badge">LOWEST TOTAL COST</span>
+            <span class="rec-warehouse">${winnerFull}</span>
+          </div>
+          <div class="rec-price">$${Math.round(winnerC.total).toLocaleString()}</div>
+          <div class="rec-detail">${palLabel} → ${dest}${savings > 0 ? ' · saves $' + Math.round(savings).toLocaleString() + ' vs ' + loser + ' via RMX' : ''}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:6px">$${(winnerC.total / units).toFixed(3)} <span style="font-size:11px">per unit</span></div>
+          ${breakdown(winnerC, winner)}
+          <div style="margin-top:12px;font-size:12px;color:#ccc;line-height:1.7;border-top:0.5px solid var(--border);padding-top:10px">
+            ${(() => {
+              const reasons = [];
+              const sorted = candidates.slice(1);
+              if (sorted.length === 0) return 'Only available option for this lane.';
+              const biggestRival = sorted[0];
+              const diff = Math.round(biggestRival.cost.total - winnerC.total);
+              const pctSaving = ((diff / biggestRival.cost.total) * 100).toFixed(1);
+              reasons.push('<b style="color:var(--accent)">Why ' + winner + '?</b>');
+              if (winnerC.outbound < biggestRival.cost.outbound) {
+                const odiff = Math.round(biggestRival.cost.outbound - winnerC.outbound);
+                reasons.push('Lower outbound freight by $' + odiff.toLocaleString() + ' vs ' + biggestRival.full + '.');
+              }
+              if (winnerC.inbound < biggestRival.cost.inbound) {
+                const idiff = Math.round(biggestRival.cost.inbound - winnerC.inbound);
+                reasons.push('Cheaper inbound from Roncadin by $' + idiff.toLocaleString() + '.');
+              }
+              if (winnerC.storage < biggestRival.cost.storage) {
+                const sdiff = Math.round(biggestRival.cost.storage - winnerC.storage);
+                reasons.push('Lower storage cost by $' + sdiff.toLocaleString() + '.');
+              }
+              reasons.push('Cheapest of all 3 options by <b style="color:var(--accent)">$' + diff.toLocaleString() + ' (' + pctSaving + '%)</b> vs ' + biggestRival.full + '.');
+              return reasons.join(' ');
+            })()}
+          </div>
+        </div>
+
+        ${candidates.length > 1 ? `
+        <p class="section-title">Alternatives</p>
+        <div class="alt-grid">
+          ${candidates.slice(1).map(c => `
+          <div class="alt-card">
+            <div class="alt-wh">${c.full}</div>
+            <div class="alt-price">$${Math.round(c.cost.total).toLocaleString()}</div>
+            <div class="alt-note">+$${Math.round(c.cost.total - winnerC.total).toLocaleString()} more total landed cost</div>
+            ${breakdown(c.cost, c.name)}
+          </div>`).join('')}
+        </div>` : ''}
+
+        <p class="section-title">RMX Outbound rate comparison — ${dest}</p>
+        <div class="rate-table-wrap">${buildRateCompareTable(dest, pallets)}</div>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px">Total cost = outbound LTL + inbound from Roncadin + storage. Highlighted = your pallet count.</p>
+      `;
+    } else {
+      routeHTML = `<div class="reasoning">⚠ Both carriers show FTL for ${dest} at ${pallets} pallets. Check FTL rates in the table above.</div>`;
+    }
+  } else {
+    routeHTML = `<div class="reasoning" style="margin-top:1rem">⚠ Could not determine destination or pallet count from this PO. Review the extracted details below and look up rates manually.<br><br>${po.notes || ''}</div>`;
+  }
+
+  resultDiv.innerHTML = `
+    <p class="section-title">Extracted PO Details</p>
+    <div class="po-meta">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">${filename}</span>
+        <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:${confColor};text-transform:uppercase">${po.confidence || '?'} confidence</span>
+      </div>
+      <div class="po-meta-grid">
+        <div class="meta-item"><label>PO Number</label><span>${po.po_number || '—'}</span></div>
+        <div class="meta-item"><label>Retailer / Buyer</label><span>${po.retailer || '—'}</span></div>
+        <div class="meta-item"><label>Ship Date</label><span>${po.ship_date || '—'}</span></div>
+        <div class="meta-item"><label>Destination (PO)</label><span>${po.destination_raw || '—'}</span></div>
+        <div class="meta-item"><label>Matched DC</label><span style="color:var(--accent2)">${po.destination_matched || 'Unrecognized'}</span></div>
+        <div class="meta-item"><label>Pallets</label><span>${po.pallets || '—'}</span></div>
+        <div class="meta-item"><label>Type</label><span>${po.shipment_type || '—'}</span></div>
+        ${po.skus && po.skus.length ? `<div class="meta-item"><label>SKUs</label><span style="font-size:12px">${po.skus.join(', ')}</span></div>` : ''}
+      </div>
+      ${po.notes ? `<div style="margin-top:10px;font-size:12px;color:var(--muted);border-top:0.5px solid var(--border);padding-top:8px">${po.notes}</div>` : ''}
+    </div>
+
+    ${routeHTML}
+
+    <button class="reset-btn" onclick="resetApp()">← Analyze another PO</button>
+  `;
+
+  resultDiv.className = 'result visible';
+}
+
+
+
+// ─────────────────────────────────────────────
+// MANUAL MODE
+// ─────────────────────────────────────────────
+function setMode(mode) {
+  const pdf = document.getElementById('dropZone');
+  const form = document.getElementById('manualForm');
+  document.getElementById('btnPDF').classList.toggle('active', mode === 'pdf');
+  document.getElementById('btnManual').classList.toggle('active', mode === 'manual');
+  pdf.style.display = mode === 'pdf' ? '' : 'none';
+  form.style.display = mode === 'manual' ? '' : 'none';
+}
+
+function runManual() {
+  const dest = document.getElementById('manualDest').value;
+  const pallets = parseInt(document.getElementById('manualPallets').value);
+  const po_number = document.getElementById('manualPO').value || null;
+  const retailer = document.getElementById('manualRetailer').value || null;
+
+  if (!dest) { alert('Please select a destination DC.'); return; }
+  if (!pallets || pallets < 1) { alert('Please enter a valid pallet count.'); return; }
+
+  clearError();
+  resultDiv.className = 'result';
+  resultDiv.innerHTML = '';
+
+  const po = {
+    po_number,
+    retailer,
+    ship_date: null,
+    destination_raw: dest,
+    destination_matched: dest,
+    pallets,
+    shipment_type: pallets >= 10 ? 'FTL' : 'LTL',
+    skus: [],
+    confidence: 'high',
+    notes: 'Manual entry'
+  };
+
+  renderResult(po, 'manual entry');
+}
+
+// ─────────────────────────────────────────────
+// HISTORY
+// ─────────────────────────────────────────────
+const HISTORY_KEY = 'bb_po_history';
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function saveToHistory(po, winner, totalCost, filename) {
+  const history = loadHistory();
+  const entry = {
+    id: Date.now(),
+    filename,
+    po_number: po.po_number,
+    retailer: po.retailer,
+    ship_date: po.ship_date,
+    destination: po.destination_matched,
+    pallets: po.pallets,
+    skus: po.skus,
+    winner,
+    totalCost: Math.round(totalCost),
+    savedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    poData: po
+  };
+  history.unshift(entry);
+  const trimmed = history.slice(0, 20);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = loadHistory();
+  const section = document.getElementById('historySection');
+  const grid = document.getElementById('historyGrid');
+  if (!history.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  grid.innerHTML = history.map(e => `
+    <div class="history-card" onclick="restoreFromHistory(${e.id})">
+      <div class="hc-top">
+        <span class="hc-po">${e.po_number || e.filename || 'PO'}</span>
+        <span class="hc-date">${e.savedAt}</span>
+      </div>
+      <div class="hc-dest">${e.destination || '—'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="hc-winner">${e.winner || '—'}</span>
+        <span class="hc-cost">${e.totalCost ? '$' + e.totalCost.toLocaleString() : '—'}</span>
+      </div>
+      <div class="hc-retailer">${e.retailer || ''} ${e.pallets ? '· ' + e.pallets + ' pallets' : ''}</div>
+    </div>
+  `).join('');
+}
+
+function restoreFromHistory(id) {
+  const history = loadHistory();
+  const entry = history.find(e => e.id === id);
+  if (!entry) return;
+  resultDiv.className = 'result';
+  resultDiv.innerHTML = '';
+  clearError();
+  window._restoringFromHistory = true;
+  renderResult(entry.poData, entry.filename || 'restored');
+  window._restoringFromHistory = false;
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+}
+
+// Load history on page load
+renderHistory();
+// ─────────────────────────────────────────────
+// INVENTORY
+// ─────────────────────────────────────────────
+let arcadiaInventory = {};
+
+const SKU_MAP = {
+  'FG-PRD-CHE-12': { name: '12" Cheese', cases_per_pallet: 54 },
+  'FG-PRD-PEP-12': { name: '12" Pepperoni', cases_per_pallet: 54 },
+  'FG-PRD-TMT-12': { name: '12" Three Meat', cases_per_pallet: 54 },
+  'FG-PRD-VDK-12': { name: '12" Vodka', cases_per_pallet: 54 },
+  'FG-PGR-CHE-12': { name: 'Grandma Cheese', cases_per_pallet: 49 },
+  'FG-PGR-PEP-12': { name: 'Grandma Pepperoni', cases_per_pallet: 49 },
+  'FG-PGR-VDK-12': { name: 'Grandma Vodka', cases_per_pallet: 49 },
+};
+
+document.getElementById('invFileInput').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  document.getElementById('invFileName').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets['ReportData'] || wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws);
+      arcadiaInventory = {};
+      let totalPallets = 0;
+      let html = '<table style="width:100%;font-size:11px;border-collapse:collapse">';
+      data.forEach(row => {
+        const code = row['Item Code'];
+        const qty = parseInt(row['On Hand Quantity']) || 0;
+        const sku = SKU_MAP[code];
+        if (sku) {
+          const pallets = Math.ceil(qty / sku.cases_per_pallet);
+          arcadiaInventory[code] = { cases: qty, pallets, name: sku.name };
+          totalPallets += pallets;
+          html += `<tr><td style="color:var(--muted);padding:2px 0">${sku.name}</td><td style="text-align:right;color:var(--text)">${qty} cases</td><td style="text-align:right;color:var(--accent2)">${pallets} pal</td></tr>`;
+        }
+      });
+      html += `<tr style="border-top:0.5px solid var(--border)"><td style="color:var(--muted);padding-top:4px">Total</td><td></td><td style="text-align:right;color:var(--accent);padding-top:4px;font-weight:600">${totalPallets} pal</td></tr>`;
+      html += '</table>';
+      document.getElementById('arcadiaInvDisplay').innerHTML = html;
+    } catch(e) {
+      document.getElementById('arcadiaInvDisplay').textContent = 'Error reading file: ' + e.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function getCSWInventory() {
+  return {
+    'FG-PRD-CHE-12': { cases: parseInt(document.getElementById('csw_che').value) || 0, pallets: Math.ceil((parseInt(document.getElementById('csw_che').value) || 0) / 54), name: '12" Cheese' },
+    'FG-PRD-PEP-12': { cases: parseInt(document.getElementById('csw_pep').value) || 0, pallets: Math.ceil((parseInt(document.getElementById('csw_pep').value) || 0) / 54), name: '12" Pepperoni' },
+    'FG-PRD-TMT-12': { cases: parseInt(document.getElementById('csw_tmt').value) || 0, pallets: Math.ceil((parseInt(document.getElementById('csw_tmt').value) || 0) / 54), name: '12" Three Meat' },
+    'FG-PRD-VDK-12': { cases: parseInt(document.getElementById('csw_vdk').value) || 0, pallets: Math.ceil((parseInt(document.getElementById('csw_vdk').value) || 0) / 54), name: '12" Vodka' },
+    'FG-PGR-CHE-12': { cases: parseInt(document.getElementById('csw_gche').value) || 0, pallets: Math.ceil((parseInt(document.getElementById('csw_gche').value) || 0) / 49), name: 'Grandma Cheese' },
+    'FG-PGR-PEP-12': { cases: parseInt(document.getElementById('csw_gpep').value) || 0, pallets: Math.ceil((parseInt(document.getElementById('csw_gpep').value) || 0) / 49), name: 'Grandma Pepperoni' },
+    'FG-PGR-VDK-12': { cases: parseInt(document.getElementById('csw_gvdk').value) || 0, pallets: Math.ceil((parseInt(document.getElementById('csw_gvdk').value) || 0) / 49), name: 'Grandma Vodka' },
+  };
+}
+
+function getTotalInventoryPallets(inv) {
+  return Object.values(inv).reduce((s, v) => s + v.pallets, 0);
+}
+
+// ─────────────────────────────────────────────
+// PERSIST CSW INVENTORY
+// ─────────────────────────────────────────────
+const CSW_INV_KEY = 'bb_csw_inventory';
+const CSW_INV_FIELDS = ['csw_che','csw_pep','csw_tmt','csw_vdk','csw_gche','csw_gpep','csw_gvdk'];
+
+function saveCSWInventory() {
+  const data = {};
+  CSW_INV_FIELDS.forEach(id => { data[id] = document.getElementById(id).value; });
+  localStorage.setItem(CSW_INV_KEY, JSON.stringify(data));
+}
+
+function loadCSWInventory() {
+  try {
+    const data = JSON.parse(localStorage.getItem(CSW_INV_KEY) || '{}');
+    CSW_INV_FIELDS.forEach(id => {
+      if (data[id]) document.getElementById(id).value = data[id];
+    });
+  } catch(e) {}
+}
+
+// Auto-save on any change
+CSW_INV_FIELDS.forEach(id => {
+  document.getElementById(id).addEventListener('change', saveCSWInventory);
+});
+
+// Load on page load
+loadCSWInventory();
+
+// ─────────────────────────────────────────────
+// TAB SWITCHING
+// ─────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('tabContentPO').style.display = tab === 'po' ? '' : 'none';
+  document.getElementById('tabContentProd').style.display = tab === 'prod' ? '' : 'none';
+  document.getElementById('tabContentMap').style.display = tab === 'map' ? '' : 'none';
+  if(document.getElementById('tabContentHE')) document.getElementById('tabContentHE').style.display = tab === 'he' ? '' : 'none';
+  ['tabPO','tabProd','tabMap','tabHE'].forEach(id => {
+    const active = (id==='tabPO'&&tab==='po')||(id==='tabProd'&&tab==='prod')||(id==='tabMap'&&tab==='map')||(id==='tabHE'&&tab==='he');
+    document.getElementById(id).style.borderBottomColor = active ? 'var(--accent)' : 'transparent';
+    document.getElementById(id).style.color = active ? 'var(--accent)' : 'var(--muted)';
+  });
+  if (tab === 'map') initMap();
+}
+
+let mapInitialized = false;
+function initMap() {
+  if (mapInitialized) return;
+  mapInitialized = true;
+  const map = L.map('networkMap').setView([39.5, -95], 4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB', maxZoom: 18 }).addTo(map);
+  function mk(lat, lng, color, r, label, sub) {
+    const m = L.circleMarker([lat, lng], { radius: r, color, fillColor: color, fillOpacity: 0.9, weight: 2 }).addTo(map);
+    m.bindTooltip('<b>' + label + '</b>' + (sub ? '<br><span style=font-size:11px>' + sub + '</span>' : ''), { direction: 'top' });
+    return m;
+  }
+  const prods = [
+    mk(42.2317,-87.9545,'#e63946',10,'Roncadin','220 N Fairway Dr, Vernon Hills IL'),
+    mk(41.9986,-87.9800,'#e63946',10,'King Street Pizza Co','261 King St, Elk Grove Village IL'),
+  ];
+  const warehouses = [
+    { lat:40.9612, lng:-75.9649, label:'Arcadia (HZL01)', sub:'300 Parkview Rd, Hazle Township PA', color:'#2196F3' },
+    { lat:42.5225, lng:-87.8826, label:'CSW Kenosha', sub:'7800 95th St, Pleasant Prairie WI', color:'#2196F3' },
+  ];
+  warehouses.forEach(w => mk(w.lat, w.lng, w.color, 12, w.label, w.sub));
+  const dcs = [
+    { lat:38.8462, lng:-76.8914, label:'Upper Marlboro MD' },
+    { lat:41.8540, lng:-72.6660, label:'Windsor CT' },
+    { lat:39.9459, lng:-83.1618, label:'West Jefferson OH' },
+    { lat:30.1897, lng:-82.6390, label:'Lake City FL' },
+    { lat:33.2148, lng:-97.1331, label:'Denton TX' },
+    { lat:42.5349, lng:-92.4452, label:'Cedar Falls IA' },
+    { lat:39.8680, lng:-104.9719, label:'Thornton CO' },
+    { lat:34.1064, lng:-117.3703, label:'Rialto CA' },
+    { lat:38.5816, lng:-121.4944, label:'Sacramento CA' },
+    { lat:38.7962, lng:-121.2358, label:'UNFI Rocklin CA' },
+    { lat:41.3582, lng:-75.7380, label:'Gouldsboro PA' },
+    { lat:40.2773, lng:-75.3408, label:'Hatfield PA' },
+    { lat:42.0795, lng:-72.7496, label:'Westfield MA' },
+    { lat:39.9626, lng:-76.7277, label:'York PA' },
+  ];
+  dcs.forEach(d => mk(d.lat, d.lng, '#4af0c8', 7, d.label, ''));
+  warehouses.forEach(wh => {
+    dcs.forEach(dc => {
+      L.polyline([[wh.lat,wh.lng],[dc.lat,dc.lng]], { color: wh.color, weight:1.5, opacity:0.5, dashArray:'4 4' }).addTo(map);
+    });
+    prods.forEach(p => {
+      const ll = p.getLatLng();
+      L.polyline([[ll.lat,ll.lng],[wh.lat,wh.lng]], { color:'#e63946', weight:2.5, opacity:0.8, dashArray:'6 3' }).addTo(map);
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+// PRODUCTION RUN
+// ─────────────────────────────────────────────
+let prodFiles = [];
+
+document.getElementById('prodFileInput').addEventListener('change', function() {
+  prodFiles = Array.from(this.files);
+  document.getElementById('prodFileCount').textContent = prodFiles.length + ' file' + (prodFiles.length !== 1 ? 's' : '') + ' selected';
+  document.getElementById('prodFileList').innerHTML = prodFiles.map(f => '📄 ' + f.name).join('<br>');
+});
+
+document.getElementById('prodDropZone').addEventListener('dragover', e => { e.preventDefault(); document.getElementById('prodDropZone').classList.add('drag-over'); });
+document.getElementById('prodDropZone').addEventListener('dragleave', () => document.getElementById('prodDropZone').classList.remove('drag-over'));
+document.getElementById('prodDropZone').addEventListener('drop', e => {
+  e.preventDefault();
+  document.getElementById('prodDropZone').classList.remove('drag-over');
+  prodFiles = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+  document.getElementById('prodFileCount').textContent = prodFiles.length + ' file' + (prodFiles.length !== 1 ? 's' : '') + ' selected';
+  document.getElementById('prodFileList').innerHTML = prodFiles.map(f => '📄 ' + f.name).join('<br>');
+});
+
+async function runProductionAnalysis() {
+  const totalPallets = parseInt(document.getElementById('prodPallets').value);
+  if (!totalPallets || totalPallets < 1) { alert('Enter total pallets being produced.'); return; }
+  if (!prodFiles.length) { alert('Drop at least one PO PDF.'); return; }
+  const cswInv = getCSWInventory();
+  const arcadiaTotalPallets = getTotalInventoryPallets(arcadiaInventory);
+  const cswTotalPallets = getTotalInventoryPallets(cswInv);
+
+  const prodStatus = document.getElementById('prodStatus');
+  const prodDot = document.getElementById('prodDot');
+  const prodStatusText = document.getElementById('prodStatusText');
+  const prodResult = document.getElementById('prodResult');
+
+  prodStatus.style.display = 'flex';
+  prodDot.className = 'dot active';
+  prodResult.innerHTML = '';
+
+  // Process each PDF
+  const orders = [];
+  for (let i = 0; i < prodFiles.length; i++) {
+    if (i > 0) await new Promise(r => setTimeout(r, 10000)); // 10s delay between requests
+    prodStatusText.textContent = `Reading PO ${i+1} of ${prodFiles.length}: ${prodFiles[i].name}...`;
+    try {
+      const base64Data = await toBase64(prodFiles[i]);
+      const locationList = Object.keys(ARCADIA).join(', ');
+      const systemPrompt = `You are a logistics routing assistant for Boss Bites, a frozen pizza company. Extract shipping details from purchase orders. Known DCs: ${locationList}.
+
+Rules:
+- Identify po_type: "production" if from Roncadin/manufacturer, "retail" if going to a retailer DC
+- For retail POs: match destination to one of the known DC names by city/state
+- Extract SKU details with cases per SKU where possible
+- If pallets not listed: 12" SKUs = 54 cases/pallet, Grandma SKUs = 49 cases/pallet
+- Boss Bites SKUs: 12" Cheese, 12" Pepperoni, 12" Three Meat, 12" Vodka, Grandma Cheese, Grandma Pepperoni, Grandma Vodka
+
+Respond ONLY with valid JSON, no markdown:
+{"po_number":"string or null","retailer":"string or null","po_type":"production or retail","ship_date":"string or null","destination_matched":"exact DC name or null","pallets":integer or null,"total_cases":integer or null,"sku_details":[{"sku":"name","cases":number}],"notes":"string"}`;
+
+      const pdfText = await extractPDFText(prodFiles[i]);
+      const response = await fetch('/api/anthropic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 500,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: 'Extract shipping details from this PO and return only JSON:\n\n' + pdfText.slice(0, 3000) }]
+        })
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+      const text = data.content.map(b => b.text || '').join('').trim();
+      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      parsed.filename = prodFiles[i].name;
+      console.log('Parsed PO:', parsed);
+      orders.push(parsed);
+    } catch(e) {
+      console.error('Error processing', prodFiles[i].name, e.message);
+      orders.push({ filename: prodFiles[i].name, error: e.message, destination_matched: null, pallets: null });
+    }
+  }
+
+  prodStatusText.textContent = 'Calculating optimal routing split...';
+
+  // Calculate best routing for each order
+  // Separate production and retail POs
+  const productionPOs = orders.filter(o => o.po_type === 'production' || (o.retailer && o.retailer.toLowerCase().includes('roncadin')));
+  const retailOrders = orders.filter(o => o.po_type === 'retail' || (!o.po_type && !o.retailer?.toLowerCase().includes('roncadin')));
+  const validOrders = retailOrders.filter(o => o.destination_matched && o.pallets);
+  const failedOrders = orders.filter(o => o.error || (!o.destination_matched && o.po_type !== 'production'));
+  const totalProductionCases = productionPOs.reduce((s, o) => s + (o.total_cases || 0), 0);
+
+  // For each order find best option
+  const routedOrders = validOrders.map(o => {
+    const aC = getTotalCost('arcadia', o.destination_matched, o.pallets);
+    const cC = getTotalCost('csw', o.destination_matched, o.pallets);
+    const chrC = getTotalCost('chr', o.destination_matched, o.pallets);
+    const candidates = [
+      aC ? { name: 'Arcadia via RMX', cost: aC } : null,
+      cC ? { name: 'CSW via RMX', cost: cC } : null,
+      chrC ? { name: 'CSW via CHR', cost: chrC } : null,
+    ].filter(Boolean).sort((a,b) => a.cost.total - b.cost.total);
+    return { ...o, best: candidates[0], candidates };
+  });
+
+  // Aggregate by warehouse
+  const arcadiaOrders = routedOrders.filter(o => o.best && o.best.name === 'Arcadia via RMX');
+  const cswOrders = routedOrders.filter(o => o.best && (o.best.name === 'CSW via RMX' || o.best.name === 'CSW via CHR'));
+  const arcadiaPallets = arcadiaOrders.reduce((s, o) => s + o.pallets, 0);
+  const cswPallets = cswOrders.reduce((s, o) => s + o.pallets, 0);
+  const totalOrderPallets = arcadiaPallets + cswPallets;
+  const totalCost = routedOrders.reduce((s, o) => s + (o.best ? o.best.cost.total : 0), 0);
+  const totalOutbound = routedOrders.reduce((s, o) => s + (o.best ? o.best.cost.outbound : 0), 0);
+  const totalInbound = routedOrders.reduce((s, o) => s + (o.best ? o.best.cost.inbound : 0), 0);
+  const totalStorage = routedOrders.reduce((s, o) => s + (o.best ? o.best.cost.storage : 0), 0);
+
+  // Production PO summary
+  const totalProductionPalletsCalc = productionPOs.reduce((s, o) => s + (o.pallets || 0), 0);
+
+  // Render result
+  prodResult.innerHTML = `
+    ${productionPOs.length > 0 ? `
+    <p class="section-title">Production Orders (${productionPOs.length} PO${productionPOs.length > 1 ? 's' : ''})</p>
+    <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;font-size:12px">
+      ${productionPOs.map(p => `
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border)">
+          <span style="color:var(--muted)">${p.po_number || p.filename}</span>
+          <span style="color:var(--text)">${p.total_cases ? p.total_cases.toLocaleString() + ' cases' : ''} ${p.pallets ? '· ' + p.pallets + ' pallets' : ''}</span>
+          <span style="color:var(--accent2)">${p.ship_date || ''}</span>
+        </div>
+        ${p.sku_details && p.sku_details.length ? '<div style="padding:4px 0 8px;color:var(--muted)">' + p.sku_details.map(s => s.sku + ': ' + s.cases + ' cases').join(' · ') + '</div>' : ''}
+      `).join('')}
+    </div>` : ''}
+
+    ${arcadiaTotalPallets > 0 || cswTotalPallets > 0 ? `
+    <p class="section-title">Current Inventory</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+      <div class="alt-card">
+        <div class="alt-wh">Arcadia</div>
+        <div class="alt-price">${arcadiaTotalPallets} pallets on hand</div>
+        <div class="alt-note" style="margin-top:4px">${Object.values(arcadiaInventory).map(s => s.name + ': ' + s.pallets + ' pal').join(' · ')}</div>
+      </div>
+      <div class="alt-card">
+        <div class="alt-wh">CSW</div>
+        <div class="alt-price">${cswTotalPallets} pallets on hand</div>
+        <div class="alt-note" style="margin-top:4px">${Object.values(cswInv).filter(s => s.cases > 0).map(s => s.name + ': ' + s.pallets + ' pal').join(' · ') || 'No inventory entered'}</div>
+      </div>
+    </div>` : ''}
+
+    <p class="section-title">Production Run Summary — ${totalPallets} pallets produced</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:1.5rem">
+      <div class="metric"><div class="val" style="color:var(--accent)">$${Math.round(totalCost).toLocaleString()}</div><div class="lbl">Total Landed Cost</div></div>
+      <div class="metric"><div class="val">$${Math.round(totalOutbound).toLocaleString()}</div><div class="lbl">Total Outbound</div></div>
+      <div class="metric"><div class="val">$${Math.round(totalInbound).toLocaleString()}</div><div class="lbl">Total Inbound</div></div>
+      <div class="metric"><div class="val">$${Math.round(totalStorage).toLocaleString()}</div><div class="lbl">Total Storage</div></div>
+      <div class="metric"><div class="val" style="color:#4af0c8">${arcadiaPallets}</div><div class="lbl">Pallets → Arcadia</div></div>
+      <div class="metric"><div class="val" style="color:#4af0c8">${cswPallets}</div><div class="lbl">Pallets → CSW</div></div>
+    </div>
+
+    <p class="section-title">Routing Recommendation</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem">
+      <div class="alt-card" style="border-color:${arcadiaPallets > 0 ? 'var(--accent)' : 'var(--border)'}">
+        <div class="alt-wh">🏭 Send to Arcadia via RMX</div>
+        <div class="alt-price">${arcadiaPallets} pallets</div>
+        <div class="alt-note">Inbound: $${Math.round((arcadiaPallets/FTL_PALLETS)*INBOUND_FLAT.arcadia).toLocaleString()} · ${arcadiaOrders.length} orders</div>
+      </div>
+      <div class="alt-card" style="border-color:${cswPallets > 0 ? 'var(--accent2)' : 'var(--border)'}">
+        <div class="alt-wh">🏭 Send to CSW via CMM</div>
+        <div class="alt-price">${cswPallets} pallets</div>
+        <div class="alt-note">Inbound: $${Math.round((cswPallets/FTL_PALLETS)*INBOUND_FLAT.csw).toLocaleString()} · ${cswOrders.length} orders</div>
+      </div>
+    </div>
+
+    <p class="section-title">Order Breakdown</p>
+    <table class="rates" style="font-size:12px">
+      <thead><tr>
+        <th style="text-align:left">PO</th>
+        <th style="text-align:left">Destination</th>
+        <th>Pallets</th>
+        <th style="text-align:left">Best Route</th>
+        <th>Outbound</th>
+        <th>Inbound</th>
+        <th>Storage</th>
+        <th>Total</th>
+      </tr></thead>
+      <tbody>
+        ${routedOrders.map(o => `<tr>
+          <td style="text-align:left;color:var(--muted)">${o.po_number || o.filename}</td>
+          <td style="text-align:left">${o.destination_matched}</td>
+          <td>${o.pallets}</td>
+          <td style="text-align:left;color:var(--accent2)">${o.best ? o.best.name : '—'}</td>
+          <td>${o.best ? '$' + o.best.cost.outbound.toLocaleString() : '—'}</td>
+          <td>${o.best ? '$' + Math.round(o.best.cost.inbound).toLocaleString() : '—'}</td>
+          <td>${o.best ? '$' + Math.round(o.best.cost.storage).toLocaleString() : '—'}</td>
+          <td style="color:var(--accent);font-weight:600">${o.best ? '$' + Math.round(o.best.cost.total).toLocaleString() : '—'}</td>
+        </tr>`).join('')}
+        ${failedOrders.map(o => `<tr>
+          <td style="text-align:left;color:var(--muted)">${o.filename}</td>
+          <td colspan="7" style="color:var(--danger);text-align:left">${o.error || 'Could not extract destination/pallets'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+
+    ${(() => {
+      const cswInv = getCSWInventory();
+      const arcadiaTotalPallets = getTotalInventoryPallets(arcadiaInventory);
+      const cswTotalPallets = getTotalInventoryPallets(cswInv);
+      const hasInventory = arcadiaTotalPallets > 0 || cswTotalPallets > 0;
+
+      let inventoryHTML = '';
+      if (hasInventory) {
+        inventoryHTML = `<p class="section-title" style="margin-top:1.5rem">Current Inventory Overview</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+          <div class="alt-card">
+            <div class="alt-wh">Arcadia — Hazle Township, PA</div>
+            <div class="alt-price">${arcadiaTotalPallets} pallets on hand</div>
+            <div class="alt-note" style="margin-top:6px">
+              ${Object.values(arcadiaInventory).map(s => s.name + ': ' + s.pallets + ' pal (' + s.cases + ' cases)').join('<br>')}
+            </div>
+          </div>
+          <div class="alt-card">
+            <div class="alt-wh">CSW — Kenosha, WI</div>
+            <div class="alt-price">${cswTotalPallets} pallets on hand</div>
+            <div class="alt-note" style="margin-top:6px">
+              ${Object.values(cswInv).filter(s => s.cases > 0).map(s => s.name + ': ' + s.pallets + ' pal (' + s.cases + ' cases)').join('<br>') || 'No inventory entered'}
+            </div>
+          </div>
+        </div>`;
+      }
+
+      if (totalPallets <= totalOrderPallets) return inventoryHTML;
+
+      const excess = totalPallets - totalOrderPallets;
+      const excessUnits = excess * 648;
+      const cswStorageCost = Math.round((excessUnits * STORAGE_PER_UNIT.csw) + ((excess/FTL_PALLETS) * INBOUND_FLAT.csw));
+      const arcadiaStorageCost = Math.round((excessUnits * STORAGE_PER_UNIT.arcadia) + ((excess/FTL_PALLETS) * INBOUND_FLAT.arcadia));
+
+      // Factor in existing inventory — prefer warehouse with less stock
+      let recWarehouse, reason;
+      if (hasInventory && arcadiaTotalPallets > cswTotalPallets + 20) {
+        recWarehouse = 'CSW';
+        reason = 'Arcadia already has significantly more inventory (' + arcadiaTotalPallets + ' vs ' + cswTotalPallets + ' pallets). Balancing stock at CSW.';
+      } else if (hasInventory && cswTotalPallets > arcadiaTotalPallets + 20) {
+        recWarehouse = 'Arcadia';
+        reason = 'CSW already has significantly more inventory (' + cswTotalPallets + ' vs ' + arcadiaTotalPallets + ' pallets). Balancing stock at Arcadia.';
+      } else {
+        recWarehouse = cswStorageCost <= arcadiaStorageCost ? 'CSW' : 'Arcadia';
+        reason = 'Based on lowest inbound + storage cost.';
+      }
+
+      const recCost = recWarehouse === 'CSW' ? cswStorageCost : arcadiaStorageCost;
+      const altCost = recWarehouse === 'CSW' ? arcadiaStorageCost : cswStorageCost;
+
+      return inventoryHTML + `<div class="reasoning" style="margin-top:1rem">
+        <b style="color:var(--accent)">⚠ ${excess} unallocated pallet${excess > 1 ? 's' : ''} (${excessUnits.toLocaleString()} units)</b><br><br>
+        Recommend sending excess to <b style="color:var(--accent2)">${recWarehouse}</b> — ${reason}<br><br>
+        <span style="margin-right:20px">CSW cost: $${cswStorageCost.toLocaleString()}</span>
+        <span>Arcadia cost: $${arcadiaStorageCost.toLocaleString()}</span><br><br>
+        Saves <b style="color:var(--accent)">$${Math.abs(altCost - recCost).toLocaleString()}</b> vs sending to ${recWarehouse === 'CSW' ? 'Arcadia' : 'CSW'}.
+      </div>`;
+    })()}
+
+    <button class="reset-btn" onclick="document.getElementById('prodResult').innerHTML='';document.getElementById('prodFileList').innerHTML='';document.getElementById('prodFileCount').textContent='No files selected';prodFiles=[];document.getElementById('prodPallets').value='';document.getElementById('prodStatus').style.display='none';">← Analyze another run</button>
+  `;
+
+  prodDot.className = 'dot done';
+  prodStatusText.textContent = `Done — ${validOrders.length} of ${orders.length} POs processed`;
+}
+
+// ─────────────────────────────────────────────
+// RESET
+// ─────────────────────────────────────────────
+function resetApp() {
+  resultDiv.className = 'result';
+  resultDiv.innerHTML = '';
+  clearError();
+  statusBar.style.display = 'none';
+  fileInput.value = '';
+}
+</script>
+</body>
+</html>
