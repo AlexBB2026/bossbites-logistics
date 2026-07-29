@@ -270,6 +270,12 @@
           <option>Hatfield PA</option>
           <option>Westfield MA</option>
           <option>York PA</option>
+          <option>Moreno Valley CA</option>
+          <option>Ridgefield WA</option>
+          <option>Lancaster TX</option>
+          <option>Gilroy CA</option>
+          <option>Rocklin CA</option>
+          <option>Aurora CO</option>
         </select>
       </div>
       <div class="manual-field">
@@ -597,6 +603,12 @@ const ARCADIA = {
   'Hatfield PA':       [375,750,1125,'FTL','FTL','FTL','FTL','FTL','FTL',1200],
   'Westfield MA':      [375,750,1125,1500,'FTL','FTL','FTL','FTL','FTL',1600],
   'York PA':           [375,750,1125,'FTL','FTL','FTL','FTL','FTL','FTL',1200],
+  'Moreno Valley CA':  ['FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL',null],
+  'Ridgefield WA':     ['FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL',null],
+  'Lancaster TX':      ['FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL',null],
+  'Gilroy CA':         ['FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL',null],
+  'Rocklin CA':        ['FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL',null],
+  'Aurora CO':         ['FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL','FTL',null],
 };
 
 const CSW = {
@@ -614,37 +626,14 @@ const CSW = {
   'Hatfield PA':       [313,625,938,1250,1563,1875,2188,2500,2813,3600],
   'Westfield MA':      [313,625,938,1250,1563,1875,2188,2500,2813,4600],
   'York PA':           [313,625,938,1250,1563,1875,2188,2500,2813,3600],
+  'Moreno Valley CA':  [490,910,1313,1680,2013,2415,2818,3220,3623,4800],
+  'Ridgefield WA':     [490,910,1313,1680,2013,2415,2818,3220,3623,6000],
+  'Lancaster TX':      [420,780,1125,1440,1725,2070,2415,2760,3105,3500],
+  'Gilroy CA':         [490,910,1313,1680,2013,2415,2818,3220,3623,4800],
+  'Rocklin CA':        [490,910,1313,1680,2013,2415,2818,3220,3623,4800],
+  'Aurora CO':         [420,780,1125,1440,1725,2070,2415,2760,3105,4200],
 };
-const CHR = {
-  'Upper Marlboro MD': [344, 275, 275, 248, 248, 222, 222, 201, 201, 179],
-  'Windsor CT':        [360, 288, 288, 260, 260, 233, 233, 212, 212, 189],
-  'West Jefferson OH': [288, 198, 198, 175, 175, 150, 150, 130, 130, 110],
-  'Lake City FL':      [379, 303, 303, 273, 273, 246, 246, 224, 224, 201],
-  'Denton TX':         [304, 243, 243, 219, 219, 195, 195, 175, 175, 154],
-  'Cedar Falls IA':    [244, 168, 168, 149, 149, 126, 126, 108, 108, 88],
-  'Thornton CO':       [427, 294, 294, 258, 258, 226, 226, 202, 202, 178],
-  'Rialto CA':         [394, 315, 315, 284, 284, 256, 256, 233, 233, 210],
-  'Sacramento CA':     [453, 335, 335, 299, 299, 267, 267, 241, 241, 218],
-  'UNFI Rocklin CA':   [453, 335, 335, 299, 299, 267, 267, 241, 241, 218],
-  'Gouldsboro PA':     [337, 269, 269, 243, 243, 217, 217, 196, 196, 174],
-  'Hatfield PA':       [337, 269, 269, 243, 243, 217, 217, 196, 196, 174],
-  'Westfield MA':      [383, 306, 306, 276, 276, 248, 248, 226, 226, 203],
-  'York PA':           [337, 269, 269, 243, 243, 217, 217, 196, 196, 174],
-};
-// CHR rates are per-pallet-position x pallets (not flat totals like Arcadia/CSW)
 // Tier logic: 1=Min, 2-4=tier2, 5-9=tier3, 10-14=tier4, 15-19=tier5, 20+=tier6
-function getCHRRate(dest, pallets) {
-  const row = CHR[dest];
-  if (!row) return null;
-  let idx;
-  if (pallets === 1) idx = 0;
-  else if (pallets <= 4) idx = 1;
-  else if (pallets <= 9) idx = 4;
-  else if (pallets <= 14) idx = 6;
-  else if (pallets <= 19) idx = 8;
-  else idx = 9;
-  return row[idx] * pallets;
-}
 
 
 const FSC_TABLE=[[0,1.199,0],[1.2,1.229,0.0035],[1.23,1.258,0.007],[1.26,1.288,0.0105],[1.29,1.319,0.014],[1.32,1.349,0.0175],[1.35,1.379,0.021],[1.38,1.409,0.0245],[1.41,1.439,0.028],[1.44,1.469,0.0315],[1.47,1.499,0.035],[1.5,1.528,0.0385],[1.53,1.558,0.042],[1.56,1.589,0.0455],[1.59,1.619,0.049],[1.62,1.649,0.0525],[1.65,1.679,0.056],[1.68,1.709,0.0595],[1.71,1.739,0.063],[1.74,1.768,0.0665],[1.77,1.799,0.07],[1.8,1.829,0.0735],[1.83,1.859,0.077],[1.86,1.889,0.0805],[1.89,1.919,0.084],[1.92,1.949,0.0875],[1.95,1.979,0.091],[1.98,2.009,0.0945],[2.01,2.039,0.098],[2.04,2.069,0.1015],[2.07,2.099,0.105],[2.1,2.129,0.1085],[2.13,2.159,0.112],[2.16,2.189,0.1155],[2.19,2.219,0.119],[2.22,2.249,0.1225],[2.25,2.279,0.126],[2.28,2.309,0.1295],[2.31,2.339,0.133],[2.34,2.369,0.1365],[2.37,2.399,0.14],[2.4,2.429,0.1435],[2.43,2.459,0.147],[2.46,2.489,0.1505],[2.49,2.519,0.154],[2.52,2.549,0.1575],[2.55,2.579,0.161],[2.58,2.609,0.1645],[2.61,2.639,0.168],[2.64,2.669,0.1715],[2.67,2.699,0.175],[2.7,2.729,0.1785],[2.73,2.759,0.182],[2.76,2.789,0.1855],[2.79,2.819,0.189],[2.82,2.849,0.1925],[2.85,2.879,0.196],[2.88,2.909,0.1995],[2.91,2.939,0.203],[2.94,2.969,0.2065],[2.97,2.999,0.21],[3.0,3.029,0.2135],[3.03,3.059,0.217],[3.06,3.089,0.2205],[3.09,3.119,0.224],[3.12,3.149,0.2275],[3.15,3.179,0.231],[3.18,3.209,0.2345],[3.21,3.239,0.238],[3.24,3.269,0.2415],[3.27,3.299,0.245],[3.3,3.329,0.2485],[3.33,3.359,0.252],[3.36,3.389,0.2555],[3.39,3.419,0.259],[3.42,3.449,0.2625],[3.45,3.479,0.266],[3.48,3.509,0.2695],[3.51,3.539,0.273],[3.54,3.569,0.2765],[3.57,3.599,0.28],[3.6,9999,0.2835]];
@@ -837,22 +826,9 @@ function buildRateCompareTable(dest, pallets) {
     return r;
   }
 
-  // Build CHR row as per-pallet totals for each column
-  const chrRow = [1,2,3,4,5,6,7,8,9,10].map(p => {
-    const rate = getCHRRate(dest, p);
-    return rate ? rate : 'FTL';
-  });
-
-  // Find best value per column across all 3
-  for (let i = 0; i < 10; i++) {
-    const vals = [aRow[i], cRow[i], chrRow[i]].map(v => v === 'FTL' ? null : v).filter(v => v !== null);
-    const best = vals.length ? Math.min(...vals) : null;
-    // mark best in each row
-  }
-
   html += row('Arcadia', aRow, false);
   html += row('CSW', cRow, false);
-  html += row('CHR', chrRow, true);
+
   html += '</tbody></table>';
   return html;
 }
@@ -973,7 +949,6 @@ function renderResult(po, filename) {
   if (dest && pallets) {
     const aC = getTotalCost('arcadia', dest, pallets);
     const cC = getTotalCost('csw', dest, pallets);
-    const chrC = getTotalCost('chr', dest, pallets);
     // Also check Arcadia FTL if LTL not available
     const arcFTLRow = ARCADIA[dest];
     const arcFTLRate = arcFTLRow ? arcFTLRow[9] : null;
@@ -1427,7 +1402,7 @@ async function runProductionAnalysis() {
     try {
       const base64Data = await toBase64(prodFiles[i]);
       const locationList = Object.keys(ARCADIA).join(', ');
-      const systemPrompt = `You are a logistics routing assistant for Boss Bites, a frozen pizza company. Extract shipping details from purchase orders. Known DCs: ${locationList}.
+      const systemPrompt = `You are a logistics routing assistant for Boss Bites, a frozen pizza company. Extract shipping details from purchase orders. Known DCs: ${locationList}, Moreno Valley CA, Ridgefield WA, Lancaster TX, Gilroy CA, Rocklin CA, Aurora CO.
 
 Rules:
 - Identify po_type: "production" if from Roncadin/manufacturer, "retail" if going to a retailer DC
