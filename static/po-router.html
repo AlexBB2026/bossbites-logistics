@@ -652,8 +652,8 @@ function buildRefTable(data, containerId) {
   Object.entries(data).forEach(([loc, row]) => {
     html += `<tr><td>${loc}</td>`;
     row.forEach(v => {
-      html += v === 'FTL'
-        ? `<td class="ftl-ref">FTL</td>`
+      html += (v === 'FTL' || v === null)
+        ? `<td class="ftl-ref">—</td>`
         : `<td>$${v.toLocaleString()}</td>`;
     });
     html += '</tr>';
