@@ -302,6 +302,12 @@
   </div>
 
   <!-- end tabContentPO -->
+  <div id="tabContentNM" style="display:none;padding:1rem 0;">
+    <div style="background:#1a1a1a;border:0.5px solid #2e2e2e;border-radius:8px;padding:2rem;text-align:center">
+      <p style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#888">Network Map coming soon</p>
+    </div>
+  </div>
+
   <div id="tabContentHE" style="display:none;padding:1rem 0;">
     <div style="background:#111;border:0.5px solid #2e2e2e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
       <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#f0c84a;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Heat &amp; Eat — USCS Fresno CA</span>
@@ -1238,7 +1244,7 @@ loadCSWInventory();
 function switchTab(tab) {
   document.getElementById('tabContentPO').style.display = tab === 'po' ? '' : 'none';
   document.getElementById('tabContentProd').style.display = tab === 'prod' ? '' : 'none';
-  document.getElementById('tabContentMap').style.display = tab === 'map' ? '' : 'none';
+  document.getElementById('tabContentNM').style.display = tab === 'map' ? '' : 'none';
   if(document.getElementById('tabContentHE')) document.getElementById('tabContentHE').style.display = tab === 'he' ? '' : 'none';
   ['tabPO','tabProd','tabMap','tabHE'].forEach(id => {
     const active = (id==='tabPO'&&tab==='po')||(id==='tabProd'&&tab==='prod')||(id==='tabMap'&&tab==='map')||(id==='tabHE'&&tab==='he');
