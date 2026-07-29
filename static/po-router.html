@@ -553,7 +553,7 @@ function buildHERateTable() {
 document.addEventListener('DOMContentLoaded', buildHERateTable);
 
 </script>
-<script>document.addEventListener('DOMContentLoaded',()=>updateCHRSurcharge());</script>
+<script></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -613,25 +613,7 @@ const FSC_TABLE=[[0,1.199,0],[1.2,1.229,0.0035],[1.23,1.258,0.007],[1.26,1.288,0
 function getFSCPct(d){for(const [f,t,p] of FSC_TABLE){if(d>=f&&d<=t)return p;}return 0.2835;}
 
 
-function updateCHRSurcharge(){
-    chrSurcharges.fscPct=fscPctVal;
-  chrSurcharges.detention=document.getElementById('chk_detention').checked;
-  chrSurcharges.detentionHours=parseInt(document.getElementById('det_hours').value)||0;
-  chrSurcharges.layover=document.getElementById('chk_layover').checked;
-  chrSurcharges.liftgate=document.getElementById('chk_liftgate').checked;
-  chrSurcharges.liftgateAmt=parseFloat(document.getElementById('liftgate_amt').value)||0;
-  chrSurcharges.lumper=document.getElementById('chk_lumper').checked;
-  chrSurcharges.lumperAmt=parseFloat(document.getElementById('lumper_amt').value)||0;
-  chrSurcharges.tonu=document.getElementById('chk_tonu').checked;
-    const parts=['FSC '+(fscPct*100).toFixed(1)+'% on linehaul'];
-  if(chrSurcharges.detention)parts.push('Detention '+chrSurcharges.detentionHours+'hr = $'+(chrSurcharges.detentionHours*75));
-  if(chrSurcharges.layover)parts.push('Layover $500');
-  if(chrSurcharges.liftgate&&chrSurcharges.liftgateAmt)parts.push('Liftgate $'+chrSurcharges.liftgateAmt);
-  if(chrSurcharges.lumper&&chrSurcharges.lumperAmt)parts.push('Lumper $'+chrSurcharges.lumperAmt);
-  if(chrSurcharges.tonu)parts.push('TONU $250');
-  document.getElementById('chr-surcharge-summary').textContent='Active: '+parts.join(' · ');
-  if(window._lastPO)renderResult(window._lastPO,window._lastFilename);
-}
+
 const UNITS_PER_PALLET = 648;
 const INBOUND_FLAT = { arcadia: 3200, csw: 376 };
 const FTL_PALLETS = 28;
@@ -778,7 +760,7 @@ function buildRateCompareTable(dest, pallets) {
       const isSelected = i === palIdx;
       const cls = v === 'FTL' ? 'rate-ftl' : '';
       const selCls = isSelected ? 'rate-selected' : '';
-      const disp = v === 'FTL' ? 'FTL' : '$' + v.toLocaleString();
+      const disp = (v === 'FTL' || v === null) ? 'FTL' : '$' + v.toLocaleString();
       r += `<td class="${cls} ${selCls}">${disp}</td>`;
     });
     r += '</tr>';
@@ -937,8 +919,7 @@ function renderResult(po, filename) {
     function breakdown(c, warehouse) {
       if (!c) return '';
       const isCHR = warehouse === 'CHR';
-      const fscLine = isCHR && c.fsc ? `<span style="margin-right:16px;color:#f0c84a">FSC (${(chrSurcharges.fscPct*100).toFixed(1)}%): <b style="color:#f0c84a">$${Math.round(c.fsc).toLocaleString()}</b> <span style="font-size:10px;color:#888">($${(c.fsc/units).toFixed(3)}/unit)</span></span>` : '';
-      const accLine = isCHR && c.accessorials ? `<span style="margin-right:16px;color:#f0c84a">Accessorials: <b style="color:#f0c84a">$${Math.round(c.accessorials).toLocaleString()}</b></span>` : '';
+      const fscLine = isCHR && c.fsc ? `<span style="margin-right:16px;color:#f0c84a">FSC (${(      const accLine = isCHR && c.accessorials ? `<span style="margin-right:16px;color:#f0c84a">Accessorials: <b style="color:#f0c84a">$${Math.round(c.accessorials).toLocaleString()}</b></span>` : '';
       return `<div style="margin-top:10px;font-size:12px;color:var(--muted);border-top:0.5px solid var(--border);padding-top:8px;line-height:2">
         <span style="margin-right:16px">Outbound LTL: <b style="color:var(--text)">$${c.outbound.toLocaleString()}</b> <span style="font-size:10px;color:#666">($${(c.outbound/units).toFixed(3)}/unit)</span></span>
         ${fscLine}${accLine}
