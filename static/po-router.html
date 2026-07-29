@@ -733,9 +733,8 @@ const errorBox   = document.getElementById('errorBox');
 const apiKeyEl   = document.getElementById('apiKey');
 
 // Persist API key in localStorage
-const STORED_KEY = localStorage.getItem('bb_api_key');
-if (STORED_KEY) apiKeyEl.value = STORED_KEY;
-apiKeyEl.addEventListener('change', () => localStorage.setItem('bb_api_key', apiKeyEl.value.trim()));
+
+
 
 // ─────────────────────────────────────────────
 // STATUS / ERROR helpers
@@ -841,11 +840,8 @@ async function handleFile(file) {
   resultDiv.className = 'result';
   resultDiv.innerHTML = '';
 
-  const apiKey = apiKeyEl.value.trim() || '';
-  if (!apiKey) {
-    showError('Enter your Anthropic API key at the top right before dropping a PO.');
-    return;
-  }
+  const apiKey = '';
+  
 
   setStatus('Reading PDF...', 'active');
 
