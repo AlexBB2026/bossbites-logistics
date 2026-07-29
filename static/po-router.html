@@ -918,12 +918,9 @@ function renderResult(po, filename) {
 
     function breakdown(c, warehouse) {
       if (!c) return '';
-      const isCHR = warehouse === 'CHR';
-      const fscLine = isCHR && c.fsc ? `<span style="margin-right:16px;color:#f0c84a">FSC (${(      const accLine = isCHR && c.accessorials ? `<span style="margin-right:16px;color:#f0c84a">Accessorials: <b style="color:#f0c84a">$${Math.round(c.accessorials).toLocaleString()}</b></span>` : '';
       return `<div style="margin-top:10px;font-size:12px;color:var(--muted);border-top:0.5px solid var(--border);padding-top:8px;line-height:2">
         <span style="margin-right:16px">Outbound LTL: <b style="color:var(--text)">$${c.outbound.toLocaleString()}</b> <span style="font-size:10px;color:#666">($${(c.outbound/units).toFixed(3)}/unit)</span></span>
-        ${fscLine}${accLine}
-        <span style="margin-right:16px">Inbound (Roncadin → ${warehouse === 'CHR' ? 'CSW' : warehouse}): <b style="color:var(--text)">$${c.inbound.toLocaleString()}</b> <span style="font-size:10px;color:#666">($${(c.inbound/units).toFixed(3)}/unit)</span></span>
+        <span style="margin-right:16px">Inbound (Roncadin → ${warehouse}): <b style="color:var(--text)">$${c.inbound.toLocaleString()}</b> <span style="font-size:10px;color:#666">($${(c.inbound/units).toFixed(3)}/unit)</span></span>
         <span>Storage (${units.toLocaleString()} units): <b style="color:var(--text)">$${Math.round(c.storage).toLocaleString()}</b> <span style="font-size:10px;color:#666">($${(c.storage/units).toFixed(3)}/unit)</span></span>
       </div>`;
     }
