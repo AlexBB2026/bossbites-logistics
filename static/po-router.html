@@ -223,7 +223,7 @@
   <div class="header">
     <div class="header-left">
       <h1>BOSS<span style="color:#e8213a">B</span>ITES · LOGISTICS CALCULATOR</h1>
-      <p>Arcadia via RMX · CSW via RMX · CSW via CHR</p>
+      <p>Arcadia via RMX · CSW via RMX</p>
     </div>
     <div class="api-key-wrap">
       <label>ANTHROPIC KEY</label>
@@ -294,30 +294,7 @@
     <button class="manual-submit" onclick="runManual()">CALCULATE BEST ROUTE</button>
   </div>
   <!-- Drop zone -->
-  <div <div id="chr-panel" style="background:#1a1a1a;border:0.5px solid #2e2e2e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a9eff;text-transform:uppercase;letter-spacing:1px;font-weight:600;">CHR Fuel Surcharge &amp; Accessorials</span><span style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;">Applied to CSW via CHR only</span></div>
-  <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;">
-    <div><label style="font-size:10px;color:#888;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">CHR Fuel Surcharge %</label>
-    <div style="display:flex;align-items:center;gap:8px;"><input type="number" id="fscPct" step="0.1" min="0" max="100" value="28.0" style="width:80px;background:#222;border:0.5px solid #3e3e3e;color:#f0f0f0;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:6px 8px;border-radius:4px;" oninput="updateCHRSurcharge()"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#888;">% of linehaul</span></div></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;">
-      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_detention" onchange="updateCHRSurcharge()"> Detention <input type="number" id="det_hours" min="1" max="24" value="1" style="width:36px;margin-left:4px;background:#1a1a1a;border:0.5px solid #3e3e3e;color:#f0f0f0;font-size:11px;padding:2px 4px;border-radius:3px;" oninput="updateCHRSurcharge()"> hrs ($75/hr)</label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_layover" onchange="updateCHRSurcharge()"> Layover ($500)</label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_liftgate" onchange="updateCHRSurcharge()"> Liftgate $<input type="number" id="liftgate_amt" min="0" value="0" style="width:55px;margin-left:2px;background:#1a1a1a;border:0.5px solid #3e3e3e;color:#f0f0f0;font-size:11px;padding:2px 4px;border-radius:3px;" oninput="updateCHRSurcharge()"></label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_lumper" onchange="updateCHRSurcharge()"> Lumper $<input type="number" id="lumper_amt" min="0" value="0" style="width:55px;margin-left:2px;background:#1a1a1a;border:0.5px solid #3e3e3e;color:#f0f0f0;font-size:11px;padding:2px 4px;border-radius:3px;" oninput="updateCHRSurcharge()"></label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#ccc;font-family:'IBM Plex Mono',monospace;background:#222;border:0.5px solid #2e2e2e;border-radius:4px;padding:5px 10px;cursor:pointer;"><input type="checkbox" id="chk_tonu" onchange="updateCHRSurcharge()"> TONU ($250)</label>
-    </div>
-  </div>
-  <div id="chr-surcharge-summary" style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#666;"></div>
-</div>
-<div class="drop-zone" id="dropZone">
-    <input type="file" id="fileInput" accept=".pdf" />
-    <div class="drop-icon">📄</div>
-    <div class="drop-label">Drop PO PDF here or click to browse</div>
-    <div class="drop-sub">Reads any standard purchase order — extracts destination, pallets, ship date, SKUs</div>
-  </div>
-
-
-  </div><!-- end tabContentPO -->
+  <!-- end tabContentPO -->
   <div id="tabContentHE" style="display:none;padding:1rem 0;">
     <div style="background:#111;border:0.5px solid #2e2e2e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;">
       <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#f0c84a;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Heat &amp; Eat — USCS Fresno CA</span>
@@ -519,11 +496,7 @@ function calcHE() {
   const rmxWinner = rmxLTLAvail ? (arcRMX && cswRMX ? (arcRMX.total < cswRMX.total ? 'arcadia' : 'csw') : arcRMX ? 'arcadia' : cswRMX ? 'csw' : null) : null;
   const rmxBest = rmxWinner === 'arcadia' ? arcRMX : rmxWinner === 'csw' ? cswRMX : null;
   const rmxLabel = rmxWinner === 'arcadia' ? 'Arcadia via RMX' : rmxWinner === 'csw' ? 'CSW via RMX' : null;
-    const chrOutbound=getCHRRate(dest,pallets);
-  const fscPct=chrSurcharges.fscPct||0.28;
-  const chrFSC=chrOutbound?chrOutbound*fscPct:null;
-  const chrAcc=chrOutbound?getCHRAccessorialTotal(chrOutbound):null;
-  const chrTotal=chrOutbound?chrOutbound+chrFSC+chrAcc+inbound+storage:null;
+    
   const winner=chrTotal&&chrTotal<ftlTotal?'CHR':'FTL';
   const savings=chrTotal?Math.abs(ftlTotal-chrTotal):0;
   res.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
@@ -638,12 +611,10 @@ const CSW = {
 
 const FSC_TABLE=[[0,1.199,0],[1.2,1.229,0.0035],[1.23,1.258,0.007],[1.26,1.288,0.0105],[1.29,1.319,0.014],[1.32,1.349,0.0175],[1.35,1.379,0.021],[1.38,1.409,0.0245],[1.41,1.439,0.028],[1.44,1.469,0.0315],[1.47,1.499,0.035],[1.5,1.528,0.0385],[1.53,1.558,0.042],[1.56,1.589,0.0455],[1.59,1.619,0.049],[1.62,1.649,0.0525],[1.65,1.679,0.056],[1.68,1.709,0.0595],[1.71,1.739,0.063],[1.74,1.768,0.0665],[1.77,1.799,0.07],[1.8,1.829,0.0735],[1.83,1.859,0.077],[1.86,1.889,0.0805],[1.89,1.919,0.084],[1.92,1.949,0.0875],[1.95,1.979,0.091],[1.98,2.009,0.0945],[2.01,2.039,0.098],[2.04,2.069,0.1015],[2.07,2.099,0.105],[2.1,2.129,0.1085],[2.13,2.159,0.112],[2.16,2.189,0.1155],[2.19,2.219,0.119],[2.22,2.249,0.1225],[2.25,2.279,0.126],[2.28,2.309,0.1295],[2.31,2.339,0.133],[2.34,2.369,0.1365],[2.37,2.399,0.14],[2.4,2.429,0.1435],[2.43,2.459,0.147],[2.46,2.489,0.1505],[2.49,2.519,0.154],[2.52,2.549,0.1575],[2.55,2.579,0.161],[2.58,2.609,0.1645],[2.61,2.639,0.168],[2.64,2.669,0.1715],[2.67,2.699,0.175],[2.7,2.729,0.1785],[2.73,2.759,0.182],[2.76,2.789,0.1855],[2.79,2.819,0.189],[2.82,2.849,0.1925],[2.85,2.879,0.196],[2.88,2.909,0.1995],[2.91,2.939,0.203],[2.94,2.969,0.2065],[2.97,2.999,0.21],[3.0,3.029,0.2135],[3.03,3.059,0.217],[3.06,3.089,0.2205],[3.09,3.119,0.224],[3.12,3.149,0.2275],[3.15,3.179,0.231],[3.18,3.209,0.2345],[3.21,3.239,0.238],[3.24,3.269,0.2415],[3.27,3.299,0.245],[3.3,3.329,0.2485],[3.33,3.359,0.252],[3.36,3.389,0.2555],[3.39,3.419,0.259],[3.42,3.449,0.2625],[3.45,3.479,0.266],[3.48,3.509,0.2695],[3.51,3.539,0.273],[3.54,3.569,0.2765],[3.57,3.599,0.28],[3.6,9999,0.2835]];
 function getFSCPct(d){for(const [f,t,p] of FSC_TABLE){if(d>=f&&d<=t)return p;}return 0.2835;}
-const chrSurcharges={fscPct:0.28,detention:false,detentionHours:0,layover:false,liftgate:false,liftgateAmt:0,lumper:false,lumperAmt:0,tonu:false};
-function getCHRFSC(o){return o*(chrSurcharges.fscPct||0.28);}
-function getCHRAccessorialTotal(o){let a=0;if(chrSurcharges.detention)a+=Math.max(0,chrSurcharges.detentionHours)*75;if(chrSurcharges.layover)a+=500;if(chrSurcharges.liftgate)a+=chrSurcharges.liftgateAmt;if(chrSurcharges.lumper)a+=chrSurcharges.lumperAmt;if(chrSurcharges.tonu)a+=250;return a;}
+
+
 function updateCHRSurcharge(){
-  const fscPctVal=(parseFloat(document.getElementById('fscPct').value)||28.0)/100;
-  chrSurcharges.fscPct=fscPctVal;
+    chrSurcharges.fscPct=fscPctVal;
   chrSurcharges.detention=document.getElementById('chk_detention').checked;
   chrSurcharges.detentionHours=parseInt(document.getElementById('det_hours').value)||0;
   chrSurcharges.layover=document.getElementById('chk_layover').checked;
@@ -652,8 +623,7 @@ function updateCHRSurcharge(){
   chrSurcharges.lumper=document.getElementById('chk_lumper').checked;
   chrSurcharges.lumperAmt=parseFloat(document.getElementById('lumper_amt').value)||0;
   chrSurcharges.tonu=document.getElementById('chk_tonu').checked;
-  const fscPct=chrSurcharges.fscPct;
-  const parts=['FSC '+(fscPct*100).toFixed(1)+'% on linehaul'];
+    const parts=['FSC '+(fscPct*100).toFixed(1)+'% on linehaul'];
   if(chrSurcharges.detention)parts.push('Detention '+chrSurcharges.detentionHours+'hr = $'+(chrSurcharges.detentionHours*75));
   if(chrSurcharges.layover)parts.push('Layover $500');
   if(chrSurcharges.liftgate&&chrSurcharges.liftgateAmt)parts.push('Liftgate $'+chrSurcharges.liftgateAmt);
@@ -670,16 +640,6 @@ const STORAGE_PER_UNIT = { arcadia: 0.06, csw: 0.037 };
 function getTotalCost(warehouse, dest, pallets) {
   const units = pallets * UNITS_PER_PALLET;
   let outbound;
-  if (warehouse === 'chr') {
-    outbound = getCHRRate(dest, pallets);
-    if (!outbound) return null;
-    const inbound = (pallets / FTL_PALLETS) * INBOUND_FLAT['csw'];
-    const storage = STORAGE_PER_UNIT['csw'] * units;
-    const fsc = getCHRFSC(outbound);
-    const accessorials = getCHRAccessorialTotal(outbound);
-    const chrTotal = outbound + fsc + accessorials + inbound + storage;
-    return { outbound, fsc, accessorials, inbound, storage, total: chrTotal };
-  }
   const table = warehouse === 'arcadia' ? ARCADIA : CSW;
   const row = table[dest];
   if (!row) return null;
@@ -811,8 +771,8 @@ function buildRateCompareTable(dest, pallets) {
   PAL_COLS.forEach(p => html += `<th>${p}</th>`);
   html += '</tr></thead><tbody>';
 
-  function row(name, data, isCHR) {
-    const displayName = isCHR ? 'CSW via CHR' : (name === 'Arcadia' ? 'Arcadia via RMX' : 'CSW via RMX');
+  function row(name, data) {
+    const displayName = name === 'Arcadia' ? 'Arcadia via RMX' : 'CSW via RMX';
     let r = `<tr><td>${displayName}</td>`;
     data.forEach((v, i) => {
       const isSelected = i === palIdx;
@@ -825,8 +785,8 @@ function buildRateCompareTable(dest, pallets) {
     return r;
   }
 
-  html += row('Arcadia', aRow, false);
-  html += row('CSW', cRow, false);
+  html += row('Arcadia', aRow);
+  html += row('CSW', cRow);
 
   html += '</tbody></table>';
   return html;
@@ -959,7 +919,6 @@ function renderResult(po, filename) {
       aC ? { name: 'Arcadia', full: 'Arcadia via RMX', cost: aC } : null,
       arcFTLCost ? { name: 'Arcadia', full: 'Arcadia FTL', cost: arcFTLCost } : null,
       cC ? { name: 'CSW',     full: 'CSW via RMX',           cost: cC } : null,
-      chrC ? { name: 'CHR',   full: 'CSW via CHR',         cost: chrC } : null,
     ].filter(Boolean).sort((a,b) => a.cost.total - b.cost.total);
     const winner = candidates[0]?.name;
     const winnerFull = candidates[0]?.full;
@@ -1448,18 +1407,16 @@ Respond ONLY with valid JSON, no markdown:
   const routedOrders = validOrders.map(o => {
     const aC = getTotalCost('arcadia', o.destination_matched, o.pallets);
     const cC = getTotalCost('csw', o.destination_matched, o.pallets);
-    const chrC = getTotalCost('chr', o.destination_matched, o.pallets);
     const candidates = [
       aC ? { name: 'Arcadia via RMX', cost: aC } : null,
       cC ? { name: 'CSW via RMX', cost: cC } : null,
-      chrC ? { name: 'CSW via CHR', cost: chrC } : null,
     ].filter(Boolean).sort((a,b) => a.cost.total - b.cost.total);
     return { ...o, best: candidates[0], candidates };
   });
 
   // Aggregate by warehouse
   const arcadiaOrders = routedOrders.filter(o => o.best && o.best.name === 'Arcadia via RMX');
-  const cswOrders = routedOrders.filter(o => o.best && (o.best.name === 'CSW via RMX' || o.best.name === 'CSW via CHR'));
+  const cswOrders = routedOrders.filter(o => o.best && (o.best.name === 'CSW via RMX'));
   const arcadiaPallets = arcadiaOrders.reduce((s, o) => s + o.pallets, 0);
   const cswPallets = cswOrders.reduce((s, o) => s + o.pallets, 0);
   const totalOrderPallets = arcadiaPallets + cswPallets;
